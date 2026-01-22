@@ -2,26 +2,23 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { getUser, saveUser } from '@/lib/storage-postgres';
+import { getUser, saveUser } from '@/lib/storage';
 
 export default function WelcomePage() {
   const [name, setName] = useState('');
   const router = useRouter();
 
   useEffect(() => {
-    const checkUser = async () => {
-      const user = await getUser();
-      if (user) {
-        router.push('/dashboard');
-      }
-    };
-    checkUser();
+    const user = getUser();
+    if (user) {
+      router.push('/dashboard');
+    }
   }, [router]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (name.trim()) {
-      await saveUser(name.trim());
+      saveUser(name.trim());
       router.push('/dashboard');
     }
   };

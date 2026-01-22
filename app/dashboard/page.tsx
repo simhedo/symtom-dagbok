@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { getUser, getTodayEntries, getEntries, saveEntry, updateEntry, deleteEntry } from '@/lib/storage-postgres';
+import { getUser, getTodayEntries, getEntries, saveEntry, updateEntry, deleteEntry } from '@/lib/storage';
 import { Entry, EntryType, User } from '@/types';
 import EntryCard from '@/components/EntryCard';
 import ActionBar from '@/components/ActionBar';
@@ -28,16 +28,13 @@ export default function DashboardPage() {
   const router = useRouter();
 
   useEffect(() => {
-    const loadUser = async () => {
-      const currentUser = await getUser();
-      if (!currentUser) {
-        router.push('/');
-      } else {
-        setUser(currentUser);
-        await loadEntries();
-      }
-    };
-    loadUser();
+    const currentUser = getUser();
+    if (!currentUser) {
+      router.push('/');
+    } else {
+      setUser(currentUser);
+      loadEntries();
+    }
   }, [router]);
 
   const loadEntries = async () => {

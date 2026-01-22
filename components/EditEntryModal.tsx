@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { X, Plus, Trash2 } from 'lucide-react';
 import { Entry, EntryType, Trigger, Ingredient, SymptomData } from '@/types';
-import { getAllTriggers, getAllIngredients } from '@/lib/storage-postgres';
+import { getAllTriggers, getAllIngredients } from '@/lib/storage';
 
 interface EditEntryModalProps {
   isOpen: boolean;
