@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { getUser, getTodayEntries, getEntries, saveEntry, updateEntry, deleteEntry } from '@/lib/storage';
+import { getUser, getTodayEntries, getEntries, saveEntry, updateEntry, deleteEntry } from '@/lib/storage-postgres';
 import { Entry, EntryType, User } from '@/types';
 import EntryCard from '@/components/EntryCard';
 import ActionBar from '@/components/ActionBar';
@@ -28,19 +28,22 @@ export default function DashboardPage() {
   const router = useRouter();
 
   useEffect(() => {
-    const currentUser = getUser();
-    if (!currentUser) {
-      router.push('/');
-    } else {
-      setUser(currentUser);
-      loadEntries();
-    }
+    const loadUser = async () => {
+      const currentUser = await getUser();
+      if (!currentUser) {
+        router.push('/');
+      } else {
+        setUser(currentUser);
+        await loadEntries();
+      }
+    };
+    loadUser();
   }, [router]);
 
-  const loadEntries = () => {
-    const todayEntries = getTodayEntries();
+  const loadEntries = async () => {
+    const todayEntries = await getTodayEntries();
     setEntries(todayEntries);
-    const all = getEntries();
+    const all = await getEntries();
     setAllEntries(all);
   };
 
@@ -107,7 +110,7 @@ export default function DashboardPage() {
       };
 
       saveEntry(newEntry);
-      loadEntries();
+      await loadEntries();
       // Update entries for selected date
       const dateEntries = getEntriesForDate(selectedDate);
       setEntries(dateEntries);
@@ -122,14 +125,14 @@ export default function DashboardPage() {
     setEditModalOpen(true);
   };
 
-  const handleUpdate = (updatedEntry: Entry) => {
-    updateEntry(updatedEntry.id, updatedEntry);
-    loadEntries();
+  const handleUpdate = async (updatedEntry: Entry) => {
+    await updateEntry(updatedEntry.id, updatedEntry);
+    await loadEntries();
   };
 
-  const handleDelete = (id: string) => {
-    deleteEntry(id);
-    loadEntries();
+  const handleDelete = async (id: string) => {
+    await deleteEntry(id);
+    await loadEntries();
   };
 
   const displayDate = selectedDate.toLocaleDateString('sv-SE', {

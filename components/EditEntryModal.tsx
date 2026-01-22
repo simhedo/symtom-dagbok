@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { X, Plus, Trash2 } from 'lucide-react';
 import { Entry, EntryType, Trigger, Ingredient, SymptomData } from '@/types';
-import { getAllTriggers, getAllIngredients } from '@/lib/storage';
+import { getAllTriggers, getAllIngredients } from '@/lib/storage-postgres';
 
 interface EditEntryModalProps {
   isOpen: boolean;
@@ -34,17 +34,22 @@ export default function EditEntryModal({ isOpen, onClose, entry, onSave, onDelet
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   useEffect(() => {
-    if (isOpen) {
-      setAvailableTriggers(getAllTriggers());
-      setAvailableIngredients(getAllIngredients());
-      setText(entry.text);
-      setType(entry.analysis?.type || 'FOOD');
-      setIngredients(entry.analysis?.ingredients || []);
-      setTags(entry.analysis?.tags || []);
-      setSymptomData(entry.analysis?.symptomData);
-      setEntryDate(new Date(entry.createdAt));
-      setShowDeleteConfirm(false);
-    }
+    const loadData = async () => {
+      if (isOpen) {
+        const triggers = await getAllTriggers();
+        const ingredients = await getAllIngredients();
+        setAvailableTriggers(triggers);
+        setAvailableIngredients(ingredients);
+        setText(entry.text);
+        setType(entry.analysis?.type || 'FOOD');
+        setIngredients(entry.analysis?.ingredients || []);
+        setTags(entry.analysis?.tags || []);
+        setSymptomData(entry.analysis?.symptomData);
+        setEntryDate(new Date(entry.createdAt));
+        setShowDeleteConfirm(false);
+      }
+    };
+    loadData();
   }, [isOpen, entry]);
 
   if (!isOpen) return null;

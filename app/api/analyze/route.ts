@@ -19,7 +19,7 @@ export async function POST(req: NextRequest) {
     const openaiClient = new OpenAI({
       apiKey: process.env.OPENAI_API_KEY,
     });
-  try {
+
     const { text, type }: { text: string; type: EntryType } = await req.json();
 
     const systemPrompt = `Du är en expert på maghälsa och matanalys. Analysera användarens text och returnera ENDAST valid JSON.
