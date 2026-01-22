@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
 import { EntryType, AIAnalysis } from '@/types';
 
+// Force dynamic rendering to avoid build-time execution
+export const dynamic = 'force-dynamic';
+
 export async function POST(req: NextRequest) {
   const openaiClient = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY,
