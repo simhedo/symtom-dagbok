@@ -31,7 +31,7 @@ export interface Entry {
   text: string;
   createdAt: string;
   analysis?: AIAnalysis;
-  userName: string;
+  userId?: number;
 }
 
 export interface User {

@@ -103,7 +103,7 @@ export default function DashboardPage() {
         text,
         createdAt: entryDate.toISOString(),
         analysis,
-        userName: user.name,
+        userId: user.id,
       };
 
       await saveEntry(newEntry);

@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { saveUser } from '@/lib/storage';
 
 export default function AuthPage() {
   const [isLogin, setIsLogin] = useState(true);
@@ -29,8 +30,8 @@ export default function AuthPage() {
           return;
         }
         
-        // Save user to localStorage
-        localStorage.setItem('gut_tracker_user', JSON.stringify(data.user));
+        // Save user and token
+        saveUser(data.user, data.token);
         router.push('/dashboard');
       } else {
         // Register
@@ -48,8 +49,8 @@ export default function AuthPage() {
           return;
         }
         
-        // Save user to localStorage
-        localStorage.setItem('gut_tracker_user', JSON.stringify(data.user));
+        // Save user and token
+        saveUser(data.user, data.token);
         router.push('/dashboard');
       }
     } catch (err) {

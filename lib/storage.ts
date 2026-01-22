@@ -2,38 +2,38 @@ import { Entry, User } from '@/types';
 
 const STORAGE_KEYS = {
   USER: 'gut_tracker_user',
+  TOKEN: 'gut_tracker_token',
 } as const;
 
-// User functions (still in localStorage - no auth system yet)
+// Get auth headers with JWT token
+const getAuthHeaders = (): Record<string, string> => {
+  if (typeof window === 'undefined') return {};
+  const token = localStorage.getItem(STORAGE_KEYS.TOKEN);
+  return token ? { 'Authorization': `Bearer ${token}` } : {};
+};
+
+// User functions
 export const getUser = (): User | null => {
   if (typeof window === 'undefined') return null;
   const data = localStorage.getItem(STORAGE_KEYS.USER);
   return data ? JSON.parse(data) : null;
 };
 
-export const saveUser = (name: string): User => {
-  const user: User = {
-    name,
-    createdAt: new Date().toISOString(),
-  };
+export const saveUser = (user: User, token: string): void => {
   localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(user));
-  return user;
+  localStorage.setItem(STORAGE_KEYS.TOKEN, token);
 };
 
 export const clearUser = (): void => {
   localStorage.removeItem(STORAGE_KEYS.USER);
+  localStorage.removeItem(STORAGE_KEYS.TOKEN);
 };
 
-// Entry functions (via API)
+// Entry functions (via API with JWT authentication)
 export const getEntries = async (): Promise<Entry[]> => {
   try {
-    const user = getUser();
-    if (!user) return [];
-
     const response = await fetch('/api/entries', {
-      headers: {
-        'x-user-name': user.name,
-      },
+      headers: getAuthHeaders(),
     });
 
     if (!response.ok) {
@@ -51,7 +51,10 @@ export const saveEntry = async (entry: Entry): Promise<void> => {
   try {
     const response = await fetch('/api/entries', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 
+        'Content-Type': 'application/json',
+        ...getAuthHeaders()
+      },
       body: JSON.stringify(entry),
     });
 
@@ -68,7 +71,10 @@ export const updateEntry = async (id: string, updatedEntry: Entry): Promise<void
   try {
     const response = await fetch('/api/entries', {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 
+        'Content-Type': 'application/json',
+        ...getAuthHeaders()
+      },
       body: JSON.stringify({ ...updatedEntry, id }),
     });
 
@@ -85,6 +91,7 @@ export const deleteEntry = async (id: string): Promise<void> => {
   try {
     const response = await fetch(`/api/entries?id=${id}`, {
       method: 'DELETE',
+      headers: getAuthHeaders(),
     });
 
     if (!response.ok) {

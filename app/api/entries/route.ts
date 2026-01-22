@@ -1,25 +1,44 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { sql } from '@vercel/postgres';
+import jwt from 'jsonwebtoken';
 
 export const dynamic = 'force-dynamic';
 
-// GET all entries for current user
+const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
+
+// Verify JWT token and get user
+function verifyToken(req: NextRequest): { userId: number; email: string } | null {
+  try {
+    const authHeader = req.headers.get('authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return null;
+    }
+    
+    const token = authHeader.substring(7);
+    const decoded = jwt.verify(token, JWT_SECRET) as { userId: number; email: string };
+    return decoded;
+  } catch (error) {
+    console.error('Token verification failed:', error);
+    return null;
+  }
+}
+
+// GET all entries for current user (secure - only user's own entries)
 export async function GET(req: NextRequest) {
   try {
     console.log('[GET /api/entries] Starting request...');
     
-    const userName = req.headers.get('x-user-name');
-    console.log('[GET /api/entries] User name from header:', userName);
-    
-    if (!userName) {
-      console.error('[GET /api/entries] No user name provided');
-      return NextResponse.json({ error: 'User name required' }, { status: 400 });
+    const user = verifyToken(req);
+    if (!user) {
+      console.error('[GET /api/entries] No valid token');
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    console.log('[GET /api/entries] Executing SQL query...');
+    console.log('[GET /api/entries] User ID from token:', user.userId);
+    
     const { rows } = await sql`
       SELECT * FROM entries 
-      WHERE user_name = ${userName}
+      WHERE user_id = ${user.userId}
       ORDER BY created_at DESC
     `;
     
@@ -30,48 +49,45 @@ export async function GET(req: NextRequest) {
       text: row.text,
       createdAt: row.created_at,
       analysis: row.analysis,
-      userName: row.user_name,
+      userId: row.user_id,
     }));
 
-    console.log('[GET /api/entries] Returning', entries.length, 'entries');
     return NextResponse.json(entries);
   } catch (error: any) {
     console.error('[GET /api/entries] ERROR:', {
       message: error.message,
       code: error.code,
-      detail: error.detail,
-      stack: error.stack,
-      name: error.name,
-      fullError: JSON.stringify(error, null, 2)
+      detail: error.detail
     });
     return NextResponse.json({ 
       error: error.message,
-      code: error.code,
-      detail: error.detail
+      code: error.code
     }, { status: 500 });
   }
 }
 
-// POST new entry
+// POST new entry (secure - saves with authenticated user's ID)
 export async function POST(req: NextRequest) {
   try {
     console.log('[POST /api/entries] Starting request...');
     
+    const user = verifyToken(req);
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    
     const entry = await req.json();
     console.log('[POST /api/entries] Entry data:', {
       id: entry.id,
-      userName: entry.userName,
-      text: entry.text?.substring(0, 50),
-      createdAt: entry.createdAt,
+      userId: user.userId,
       type: entry.analysis?.type
     });
     
-    console.log('[POST /api/entries] Executing INSERT...');
     await sql`
-      INSERT INTO entries (id, user_name, text, created_at, entry_type, analysis)
+      INSERT INTO entries (id, user_id, text, created_at, entry_type, analysis)
       VALUES (
         ${entry.id},
-        ${entry.userName},
+        ${user.userId},
         ${entry.text},
         ${entry.createdAt},
         ${entry.analysis?.type || 'FOOD'},
@@ -82,35 +98,30 @@ export async function POST(req: NextRequest) {
     console.log('[POST /api/entries] Entry saved successfully');
     return NextResponse.json({ success: true });
   } catch (error: any) {
-    console.error('[POST /api/entries] ERROR:', {
-      message: error.message,
-      code: error.code,
-      detail: error.detail,
-      stack: error.stack,
-      name: error.name,
-      fullError: JSON.stringify(error, null, 2)
-    });
-    return NextResponse.json({ 
-      error: error.message,
-      code: error.code,
-      detail: error.detail
-    }, { status: 500 });
+    console.error('[POST /api/entries] ERROR:', error.message);
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
 
-// PUT update entry
+// PUT update entry (secure - only updates user's own entries)
 export async function PUT(req: NextRequest) {
   try {
     console.log('[PUT /api/entries] Starting request...');
     
-    const { id, ...updateData } = await req.json();
-    console.log('[PUT /api/entries] Update data:', {
-      id,
-      text: updateData.text?.substring(0, 50),
-      type: updateData.analysis?.type
-    });
+    const user = verifyToken(req);
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
     
-    console.log('[PUT /api/entries] Executing UPDATE...');
+    const { id, ...updateData } = await req.json();
+    
+    // Verify entry belongs to user
+    const checkResult = await sql`SELECT user_id FROM entries WHERE id = ${id}`;
+    if (checkResult.rows.length === 0 || checkResult.rows[0].user_id !== user.userId) {
+      console.error('[PUT /api/entries] Unauthorized update attempt');
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+    }
+    
     await sql`
       UPDATE entries 
       SET 
@@ -119,58 +130,41 @@ export async function PUT(req: NextRequest) {
         entry_type = ${updateData.analysis?.type || 'FOOD'},
         analysis = ${JSON.stringify(updateData.analysis)},
         updated_at = CURRENT_TIMESTAMP
-      WHERE id = ${id}
+      WHERE id = ${id} AND user_id = ${user.userId}
     `;
 
     console.log('[PUT /api/entries] Entry updated successfully');
     return NextResponse.json({ success: true });
   } catch (error: any) {
-    console.error('[PUT /api/entries] ERROR:', {
-      message: error.message,
-      code: error.code,
-      detail: error.detail,
-      stack: error.stack,
-      fullError: JSON.stringify(error, null, 2)
-    });
-    return NextResponse.json({ 
-      error: error.message,
-      code: error.code,
-      detail: error.detail
-    }, { status: 500 });
+    console.error('[PUT /api/entries] ERROR:', error.message);
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
 
-// DELETE entry
+// DELETE entry (secure - only deletes user's own entries)
 export async function DELETE(req: NextRequest) {
   try {
     console.log('[DELETE /api/entries] Starting request...');
     
+    const user = verifyToken(req);
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    
     const { searchParams } = new URL(req.url);
     const id = searchParams.get('id');
-    console.log('[DELETE /api/entries] Entry ID:', id);
     
     if (!id) {
-      console.error('[DELETE /api/entries] No ID provided');
       return NextResponse.json({ error: 'Entry ID required' }, { status: 400 });
     }
 
-    console.log('[DELETE /api/entries] Executing DELETE...');
-    const result = await sql`DELETE FROM entries WHERE id = ${id}`;
+    // Only delete if entry belongs to user
+    await sql`DELETE FROM entries WHERE id = ${id} AND user_id = ${user.userId}`;
 
     console.log('[DELETE /api/entries] Entry deleted successfully');
     return NextResponse.json({ success: true });
   } catch (error: any) {
-    console.error('[DELETE /api/entries] ERROR:', {
-      message: error.message,
-      code: error.code,
-      detail: error.detail,
-      stack: error.stack,
-      fullError: JSON.stringify(error, null, 2)
-    });
-    return NextResponse.json({ 
-      error: error.message,
-      code: error.code,
-      detail: error.detail
-    }, { status: 500 });
+    console.error('[DELETE /api/entries] ERROR:', error.message);
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
