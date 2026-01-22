@@ -35,6 +35,8 @@ export interface Entry {
 }
 
 export interface User {
+  id?: number;
   name: string;
-  createdAt: string;
+  email?: string;
+  createdAt?: string;
 }

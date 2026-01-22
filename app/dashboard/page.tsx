@@ -9,7 +9,7 @@ import ActionBar from '@/components/ActionBar';
 import EntryModal from '@/components/EntryModal';
 import EditEntryModal from '@/components/EditEntryModal';
 import Calendar from '@/components/Calendar';
-import { CalendarDays, List, Rows3, BarChart3 } from 'lucide-react';
+import { CalendarDays, List, Rows3, BarChart3, LogOut } from 'lucide-react';
 import CompactEntryCard from '@/components/CompactEntryCard';
 import Insights from '@/components/Insights';
 
@@ -106,11 +106,16 @@ export default function DashboardPage() {
         userName: user.name,
       };
 
-      saveEntry(newEntry);
+      await saveEntry(newEntry);
+      
+      // Reload entries to show the new one
       await loadEntries();
+      
       // Update entries for selected date
       const dateEntries = getEntriesForDate(selectedDate);
       setEntries(dateEntries);
+      
+      setModalOpen(false);
     } catch (error) {
       console.error('Failed to save entry:', error);
       alert('Kunde inte spara inlägg. Försök igen.');
@@ -125,11 +130,22 @@ export default function DashboardPage() {
   const handleUpdate = async (updatedEntry: Entry) => {
     await updateEntry(updatedEntry.id, updatedEntry);
     await loadEntries();
+    const dateEntries = getEntriesForDate(selectedDate);
+    setEntries(dateEntries);
+    setEditModalOpen(false);
   };
 
   const handleDelete = async (id: string) => {
     await deleteEntry(id);
     await loadEntries();
+    const dateEntries = getEntriesForDate(selectedDate);
+    setEntries(dateEntries);
+    setEditModalOpen(false);
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('gut_tracker_user');
+    router.push('/auth');
   };
 
   const displayDate = selectedDate.toLocaleDateString('sv-SE', {
@@ -145,9 +161,18 @@ export default function DashboardPage() {
       <div className="bg-gray-900 border-b border-gray-800 p-4 sticky top-0 z-10">
         <div className="max-w-2xl mx-auto">
           <div className="flex items-center justify-between mb-2">
-            <div>
-              <h1 className="text-sm text-gray-400">Hej {user?.name}! 👋</h1>
-              <h2 className="text-xl font-semibold capitalize">{displayDate}</h2>
+            <div className="flex items-center gap-3">
+              <div>
+                <h1 className="text-sm text-gray-400">Hej {user?.name}! 👋</h1>
+                <h2 className="text-xl font-semibold capitalize">{displayDate}</h2>
+              </div>
+              <button
+                onClick={handleLogout}
+                className="p-2 text-gray-400 hover:text-red-400 transition-colors"
+                title="Logga ut"
+              >
+                <LogOut className="w-5 h-5" />
+              </button>
             </div>
             
             {/* View Toggle */}

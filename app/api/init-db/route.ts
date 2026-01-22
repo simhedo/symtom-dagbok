@@ -10,6 +10,8 @@ export async function GET() {
       CREATE TABLE IF NOT EXISTS users (
         id SERIAL PRIMARY KEY,
         name VARCHAR(255) NOT NULL,
+        email VARCHAR(255) UNIQUE NOT NULL,
+        password VARCHAR(255) NOT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `;
@@ -30,6 +32,7 @@ export async function GET() {
     // Create indexes
     await sql`CREATE INDEX IF NOT EXISTS idx_entries_created_at ON entries(created_at DESC)`;
     await sql`CREATE INDEX IF NOT EXISTS idx_entries_user_name ON entries(user_name)`;
+    await sql`CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)`;
 
     return NextResponse.json({ 
       success: true, 
