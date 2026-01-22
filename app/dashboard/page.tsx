@@ -65,38 +65,56 @@ export default function DashboardPage() {
   const handleSave = async (text: string, type: EntryType) => {
     if (!user) return;
 
-    // Call API to analyze
-    const response = await fetch('/api/analyze', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text, type }),
-    });
+    try {
+      // Call API to analyze
+      const response = await fetch('/api/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text, type }),
+      });
 
-    const analysis = await response.json();
+      if (!response.ok) {
+        console.error('API error:', response.status);
+        throw new Error('Failed to analyze entry');
+      }
 
-    // Use selected date if not today, otherwise use current time
-    const isToday = selectedDate.toDateString() === new Date().toDateString();
-    const entryDate = isToday ? new Date() : new Date(
-      selectedDate.getFullYear(),
-      selectedDate.getMonth(),
-      selectedDate.getDate(),
-      new Date().getHours(),
-      new Date().getMinutes()
-    );
+      const analysis = await response.json();
 
-    const newEntry: Entry = {
-      id: Date.now().toString(),
-      text,
-      createdAt: entryDate.toISOString(),
-      analysis,
-      userName: user.name,
-    };
+      // Check if response is an error
+      if (analysis.error) {
+        console.error('Analysis error:', analysis.error, analysis.details);
+        // Use fallback analysis
+        analysis.type = type;
+        analysis.summary = text;
+      }
 
-    saveEntry(newEntry);
-    loadEntries();
-    // Update entries for selected date
-    const dateEntries = getEntriesForDate(selectedDate);
-    setEntries(dateEntries);
+      // Use selected date if not today, otherwise use current time
+      const isToday = selectedDate.toDateString() === new Date().toDateString();
+      const entryDate = isToday ? new Date() : new Date(
+        selectedDate.getFullYear(),
+        selectedDate.getMonth(),
+        selectedDate.getDate(),
+        new Date().getHours(),
+        new Date().getMinutes()
+      );
+
+      const newEntry: Entry = {
+        id: Date.now().toString(),
+        text,
+        createdAt: entryDate.toISOString(),
+        analysis,
+        userName: user.name,
+      };
+
+      saveEntry(newEntry);
+      loadEntries();
+      // Update entries for selected date
+      const dateEntries = getEntriesForDate(selectedDate);
+      setEntries(dateEntries);
+    } catch (error) {
+      console.error('Failed to save entry:', error);
+      alert('Kunde inte spara inlägg. Försök igen.');
+    }
   };
 
   const handleEdit = (entry: Entry) => {

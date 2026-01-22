@@ -6,9 +6,19 @@ import { EntryType, AIAnalysis } from '@/types';
 export const dynamic = 'force-dynamic';
 
 export async function POST(req: NextRequest) {
-  const openaiClient = new OpenAI({
-    apiKey: process.env.OPENAI_API_KEY,
-  });
+  try {
+    // Check API key
+    if (!process.env.OPENAI_API_KEY) {
+      console.error('OPENAI_API_KEY is missing');
+      return NextResponse.json(
+        { error: 'OpenAI API key not configured' },
+        { status: 500 }
+      );
+    }
+
+    const openaiClient = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY,
+    });
   try {
     const { text, type }: { text: string; type: EntryType } = await req.json();
 
@@ -132,10 +142,16 @@ RETURNERA ENDAST JSON - ingen annan text!`;
     }
 
     return NextResponse.json(analysis);
-  } catch (error) {
+  } catch (error: any) {
     console.error('Analysis error:', error);
+    const errorMessage = error?.message || 'Failed to analyze entry';
+    console.error('Error details:', errorMessage);
+    
     return NextResponse.json(
-      { error: 'Failed to analyze entry' },
+      { 
+        error: 'Failed to analyze entry',
+        details: process.env.NODE_ENV === 'development' ? errorMessage : undefined 
+      },
       { status: 500 }
     );
   }
