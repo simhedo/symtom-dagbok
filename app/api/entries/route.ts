@@ -79,23 +79,45 @@ export async function POST(req: NextRequest) {
       )
     `;
 
+    console.log('[POST /api/entries] Entry saved successfully');
+    return NextResponse.json({ success: true });
+  } catch (error: any) {
+    console.error('[POST /api/entries] ERROR:', {
+      message: error.message,
+      code: error.code,
+      detail: error.detail,
+      stack: error.stack,
+      name: error.name,
+      fullError: JSON.stringify(error, null, 2)
+    });
+    return NextResponse.json({ 
+      error: error.message,
+      code: error.code,
+      detail: error.detail
+    }, { status: 500 });
+  }
+}
+
+// PUT update entry
+export async function PUT(req: NextRequest) {
+  try {
     console.log('[PUT /api/entries] Starting request...');
     
-    const { id, ...entry } = await req.json();
+    const { id, ...updateData } = await req.json();
     console.log('[PUT /api/entries] Update data:', {
       id,
-      text: entry.text?.substring(0, 50),
-      type: entry.analysis?.type
+      text: updateData.text?.substring(0, 50),
+      type: updateData.analysis?.type
     });
     
     console.log('[PUT /api/entries] Executing UPDATE...');
     await sql`
       UPDATE entries 
       SET 
-        text = ${entry.text},
-        created_at = ${entry.createdAt},
-        entry_type = ${entry.analysis?.type || 'FOOD'},
-        analysis = ${JSON.stringify(entry.analysis)},
+        text = ${updateData.text},
+        created_at = ${updateData.createdAt},
+        entry_type = ${updateData.analysis?.type || 'FOOD'},
+        analysis = ${JSON.stringify(updateData.analysis)},
         updated_at = CURRENT_TIMESTAMP
       WHERE id = ${id}
     `;
@@ -114,17 +136,14 @@ export async function POST(req: NextRequest) {
       error: error.message,
       code: error.code,
       detail: error.detail
-   
+    }, { status: 500 });
+  }
 }
 
-// PUT update entry
-export async function PUT(req: NextRequest) {
+// DELETE entry
+export async function DELETE(req: NextRequest) {
   try {
-    const { id, ...entry } = await req.json();
-    
-    await sql`
-      UPDATE entries 
-      SEole.log('[DELETE /api/entries] Starting request...');
+    console.log('[DELETE /api/entries] Starting request...');
     
     const { searchParams } = new URL(req.url);
     const id = searchParams.get('id');
@@ -136,7 +155,7 @@ export async function PUT(req: NextRequest) {
     }
 
     console.log('[DELETE /api/entries] Executing DELETE...');
-    await sql`DELETE FROM entries WHERE id = ${id}`;
+    const result = await sql`DELETE FROM entries WHERE id = ${id}`;
 
     console.log('[DELETE /api/entries] Entry deleted successfully');
     return NextResponse.json({ success: true });
@@ -153,24 +172,5 @@ export async function PUT(req: NextRequest) {
       code: error.code,
       detail: error.detail
     }, { status: 500 });
-  }
-}
-
-// DELETE entry
-export async function DELETE(req: NextRequest) {
-  try {
-    const { searchParams } = new URL(req.url);
-    const id = searchParams.get('id');
-    
-    if (!id) {
-      return NextResponse.json({ error: 'Entry ID required' }, { status: 400 });
-    }
-
-    await sql`DELETE FROM entries WHERE id = ${id}`;
-
-    return NextResponse.json({ success: true });
-  } catch (error: any) {
-    console.error('Error deleting entry:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
