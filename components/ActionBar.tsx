@@ -1,6 +1,6 @@
 'use client';
 
-import { UtensilsCrossed, Activity, Brain, Timer } from 'lucide-react';
+import { UtensilsCrossed, Activity, Brain, HeartPulse } from 'lucide-react';
 import { EntryType } from '@/types';
 
 interface ActionBarProps {
@@ -9,22 +9,46 @@ interface ActionBarProps {
 
 export default function ActionBar({ onAction }: ActionBarProps) {
   const actions = [
-    { type: 'FOOD' as EntryType, icon: UtensilsCrossed, label: 'Mat', color: 'bg-green-600 hover:bg-green-700' },
-    { type: 'SYMPTOM' as EntryType, icon: Timer, label: 'Symtom', color: 'bg-red-600 hover:bg-red-700' },
-    { type: 'EXERCISE' as EntryType, icon: Activity, label: 'Träning', color: 'bg-blue-600 hover:bg-blue-700' },
-    { type: 'MOOD' as EntryType, icon: Brain, label: 'Mående', color: 'bg-purple-600 hover:bg-purple-700' },
+    { 
+      type: 'FOOD' as EntryType, 
+      icon: UtensilsCrossed, 
+      label: 'Mat', 
+      emoji: '🍽️',
+      color: 'bg-green-600 hover:bg-green-700 active:bg-green-800' 
+    },
+    { 
+      type: 'SYMPTOM' as EntryType, 
+      icon: HeartPulse, 
+      label: 'Symptom', 
+      emoji: '🤢',
+      color: 'bg-red-600 hover:bg-red-700 active:bg-red-800' 
+    },
+    { 
+      type: 'EXERCISE' as EntryType, 
+      icon: Activity, 
+      label: 'Aktivitet', 
+      emoji: '💪',
+      color: 'bg-blue-600 hover:bg-blue-700 active:bg-blue-800' 
+    },
+    { 
+      type: 'MOOD' as EntryType, 
+      icon: Brain, 
+      label: 'Mående', 
+      emoji: '🧠',
+      color: 'bg-purple-600 hover:bg-purple-700 active:bg-purple-800' 
+    },
   ];
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 bg-gray-900 border-t border-gray-800 p-4 pb-safe">
-      <div className="grid grid-cols-4 gap-3 max-w-2xl mx-auto">
-        {actions.map(({ type, icon: Icon, label, color }) => (
+    <div className="fixed bottom-0 left-0 right-0 bg-gray-900/95 backdrop-blur-lg border-t border-gray-800 p-3 pb-safe z-40">
+      <div className="grid grid-cols-4 gap-2 max-w-2xl mx-auto">
+        {actions.map(({ type, emoji, label, color }) => (
           <button
             key={type}
             onClick={() => onAction(type)}
-            className={`${color} rounded-xl p-4 flex flex-col items-center justify-center gap-2 transition-colors active:scale-95`}
+            className={`${color} rounded-xl p-3 flex flex-col items-center justify-center gap-1 transition-all active:scale-95 shadow-lg`}
           >
-            <Icon className="w-6 h-6" />
+            <span className="text-2xl">{emoji}</span>
             <span className="text-xs font-medium">{label}</span>
           </button>
         ))}
