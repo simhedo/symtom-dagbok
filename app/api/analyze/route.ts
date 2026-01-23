@@ -28,6 +28,7 @@ KONTEXT: Användaren registrerar ${
   type === 'FOOD' ? 'mat de har ätit' : 
   type === 'SYMPTOM' ? 'magbesvär/symtom' : 
   type === 'EXERCISE' ? 'fysisk aktivitet' : 
+  type === 'MEDICATION' ? 'mediciner de har tagit' :
   'sitt allmänna mående/känslor'
 }.
 
@@ -61,6 +62,7 @@ MAT-ANALYS:
    - Bönor/linser: ~15g/dl
    - Vitt bröd/pasta: ~1-2g/portion
 5. Ge insiktsfull sammanfattning om potentiella risker
+6. Skapa tags (lowercase, utan dubbletter) med ingredienser + triggers
 
 EXEMPEL:
 Input: "Åt havregrynsgröt med banan till frukost"
@@ -72,6 +74,7 @@ Output: {
     {"name": "Mjölk", "amount": "~150ml", "triggers": [{"name": "Laktos"}]},
     {"name": "Banan", "amount": "1 st", "triggers": [{"name": "Fiber"}, {"name": "FODMAP"}]}
   ],
+  "tags": ["havregryn", "mjölk", "banan", "fiber", "gluten", "laktos", "fodmap"],
   "fiberEstimateGrams": 13,
   "summary": "Bra fiberrik frukost (~13g fiber). Havre innehåller spår av gluten. Mogen banan kan ge FODMAP-reaktion hos känsliga."
 }
@@ -110,6 +113,20 @@ Output: {
   "timestamp": "2026-01-22T18:00:00Z",
   "tags": ["Löpning", "Cardio", "30min", "Måttlig intensitet"],
   "summary": "Måttlig konditionsträning som kan påverka matsmältningen positivt."
+}
+` : type === 'MEDICATION' ? `
+MEDICIN-ANALYS:
+1. Identifiera alla mediciner i texten
+2. Returnera tags med medicinnamn (lowercase, utan dubbletter)
+3. Om tider nämns, använd den mest relevanta som timestamp
+
+EXEMPEL:
+Input: "0730 pantoprazol, escitalopram, multivitamin"
+Output: {
+  "type": "MEDICATION",
+  "timestamp": "2026-01-22T07:30:00Z",
+  "tags": ["pantoprazol", "escitalopram", "multivitamin"],
+  "summary": "Morgonmediciner intagna." 
 }
 ` : `
 MÅENDE-ANALYS:
