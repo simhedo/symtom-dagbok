@@ -48,6 +48,18 @@ function formatTime(date: Date): string {
   return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
 }
 
+// Extrahera tid från text (HH:MM, HH.MM, H.MM, osv)
+function extractTimeFromText(text: string): string | null {
+  // Matchar format: HH:MM, HH.MM, H:MM, H.MM, osv
+  const timeMatch = text.match(/(\d{1,2})[:.]\s?(\d{2})/);
+  if (timeMatch) {
+    const hours = String(parseInt(timeMatch[1])).padStart(2, '0');
+    const minutes = timeMatch[2];
+    return `${hours}:${minutes}`;
+  }
+  return null;
+}
+
 export default function EntryModal({ isOpen, onClose, type, onSave, selectedDate }: EntryModalProps) {
   const [text, setText] = useState('');
   const [intensity, setIntensity] = useState<number | null>(null);
@@ -69,6 +81,10 @@ export default function EntryModal({ isOpen, onClose, type, onSave, selectedDate
      text.toLowerCase().includes('toalett') ||
      text.toLowerCase().includes('avföring'));
 
+  // Auto-parse tid från text
+  const extractedTime = extractTimeFromText(text);
+  const displayTime = extractedTime || time;
+
   const handleSave = async () => {
     if (!text.trim()) return;
     
@@ -77,7 +93,7 @@ export default function EntryModal({ isOpen, onClose, type, onSave, selectedDate
     if (bristol) finalText += ` [Bristol ${bristol}]`;
     
     // Skapa timestamp från vald tid och datum
-    const [hours, minutes] = time.split(':').map(Number);
+    const [hours, minutes] = (extractedTime || time).split(':').map(Number);
     const baseDate = selectedDate || new Date();
     const timestamp = new Date(
       baseDate.getFullYear(),
@@ -110,10 +126,13 @@ export default function EntryModal({ isOpen, onClose, type, onSave, selectedDate
               <Clock className="w-4 h-4" />
               <input
                 type="time"
-                value={time}
+                value={displayTime}
                 onChange={(e) => setTime(e.target.value)}
                 className="bg-transparent border-none text-sm text-gray-300 focus:outline-none focus:text-white cursor-pointer"
               />
+              {extractedTime && (
+                <span className="text-xs text-gray-500 ml-1">(från text)</span>
+              )}
             </div>
           </div>
           <button onClick={onClose} className="p-1 text-gray-400 hover:text-white">

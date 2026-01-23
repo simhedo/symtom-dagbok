@@ -43,6 +43,7 @@ export default function DashboardPage() {
     setEntries(todayEntries);
     const all = await getEntries();
     setAllEntries(all);
+    return all; // Returnera för att kunna använda i handleSave
   };
 
   const getEntriesForDate = (date: Date) => {
@@ -99,11 +100,14 @@ export default function DashboardPage() {
 
       await saveEntry(newEntry);
       
-      // Reload entries to show the new one
-      await loadEntries();
+      // Reload entries - använd den nya datan direkt
+      const updatedAll = await loadEntries();
       
-      // Update entries for selected date
-      const dateEntries = getEntriesForDate(selectedDate);
+      // Filtrera för valt datum (använd ny data, inte closure)
+      const dateEntries = updatedAll.filter(entry => {
+        const entryDate = new Date(entry.createdAt);
+        return entryDate.toDateString() === selectedDate.toDateString();
+      });
       setEntries(dateEntries);
       
       setModalOpen(false);
@@ -120,16 +124,22 @@ export default function DashboardPage() {
 
   const handleUpdate = async (updatedEntry: Entry) => {
     await updateEntry(updatedEntry.id, updatedEntry);
-    await loadEntries();
-    const dateEntries = getEntriesForDate(selectedDate);
+    const updatedAll = await loadEntries();
+    const dateEntries = updatedAll.filter(entry => {
+      const entryDate = new Date(entry.createdAt);
+      return entryDate.toDateString() === selectedDate.toDateString();
+    });
     setEntries(dateEntries);
     setEditModalOpen(false);
   };
 
   const handleDelete = async (id: string) => {
     await deleteEntry(id);
-    await loadEntries();
-    const dateEntries = getEntriesForDate(selectedDate);
+    const updatedAll = await loadEntries();
+    const dateEntries = updatedAll.filter(entry => {
+      const entryDate = new Date(entry.createdAt);
+      return entryDate.toDateString() === selectedDate.toDateString();
+    });
     setEntries(dateEntries);
     setEditModalOpen(false);
   };
