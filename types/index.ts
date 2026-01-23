@@ -1,4 +1,4 @@
-export type EntryType = 'FOOD' | 'SYMPTOM' | 'EXERCISE' | 'MOOD';
+export type EntryType = 'FOOD' | 'SYMPTOM' | 'EXERCISE' | 'MOOD' | 'MEDICATION';
 
 export interface Trigger {
   name: string;

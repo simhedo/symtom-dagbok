@@ -1,8 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { X, Sparkles, ChevronDown, ChevronUp } from 'lucide-react';
 import { EntryType } from '@/types';
+import { getEntries } from '@/lib/storage';
 
 interface EntryModalProps {
   isOpen: boolean;
@@ -46,6 +47,16 @@ const modalConfig = {
       'Började nyss eller för länge sen?'
     ]
   },
+  MEDICATION: {
+    title: '💊 Medicin',
+    placeholder: 'Vilken medicin tog du?',
+    quickOptions: [], // Fylls med tidigare mediciner
+    detailPrompts: [
+      'Dos? (ex: 20mg, 1 tablett)',
+      'Varför tar du den? (symptom/förebyggande)',
+      'Var det receptbelagt eller receptfritt?'
+    ]
+  },
   EXERCISE: {
     title: '💪 Aktivitet',
     placeholder: 'Vad gjorde du?',
@@ -76,10 +87,29 @@ const modalConfig = {
     detailPrompts: [
       'Stresskänsla? (1-10)',
       'Sömnkvalitet? (bra/dålig)',
-      'Vad påverkar?'
-    ]
-  }
-};
+  const [previousMedications, setPreviousMedications] = useState<string[]>([]);
+
+  // Load previous medications when modal opens for MEDICATION type
+  useEffect(() => {
+    if (isOpen && type === 'MEDICATION') {
+      loadPreviousMedications();
+    }
+  }, [isOpen, type]);
+
+  const loadPreviousMedications = async () => {
+    const entries = await getEntries();
+    const medEntries = entries.filter(e => e.analysis?.type === 'MEDICATION');
+    const meds = medEntries.map(e => e.text.trim());
+    const uniqueMeds = [...new Set(meds)].slice(0, 8); // Top 8 most recent unique
+    setPreviousMedications(uniqueMeds);
+  };
+
+  if (!isOpen) return null;
+
+  const config = modalConfig[type];
+  const quickOptions = type === 'MEDICATION' && previousMedications.length > 0 
+    ? previousMedications 
+    : config.quickOptions
 
 export default function EntryModal({ isOpen, onClose, type, onSave }: EntryModalProps) {
   const [text, setText] = useState('');
@@ -107,24 +137,30 @@ export default function EntryModal({ isOpen, onClose, type, onSave }: EntryModal
     } finally {
       setIsSubmitting(false);
     }
-  };
-
-  return (
-    <div className="fixed inset-0 bg-black/80 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
-      <div className="bg-gray-900 w-full sm:max-w-lg sm:rounded-2xl rounded-t-2xl border border-gray-800 max-h-[90vh] flex flex-col">
-        {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-gray-800">
-          <h2 className="text-lg font-semibold">{config.title}</h2>
-          <button
-            onClick={onClose}
-            className="p-2 hover:bg-gray-800 rounded-lg transition-colors"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-
-        {/* Content */}
-        <div className="flex-1 p-4 overflow-y-auto space-y-4">
+  };{quickOptions.length > 0 && (
+            <div>
+              <p className="text-sm text-gray-400 mb-2">
+                {type === 'MEDICATION' && previousMedications.length > 0 
+                  ? 'Tidigare mediciner:' 
+                  : 'Snabbval:'}
+              </p>
+              <div className="grid grid-cols-2 gap-2">
+                {quickOptions.map((option) => (
+                  <button
+                    key={option}
+                    onClick={() => handleQuickSelect(option)}
+                    className={`p-3 rounded-lg border transition-colors text-left ${
+                      text === option
+                        ? 'bg-blue-600 border-blue-500 text-white'
+                        : 'bg-gray-800 border-gray-700 hover:border-gray-600 text-gray-300'
+                    }`}
+                  >
+                    {option}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}ssName="flex-1 p-4 overflow-y-auto space-y-4">
           {/* Quick Options */}
           <div>
             <p className="text-sm text-gray-400 mb-2">Snabbval:</p>
@@ -151,7 +187,7 @@ export default function EntryModal({ isOpen, onClose, type, onSave }: EntryModal
             <textarea
               value={text}
               onChange={(e) => setText(e.target.value)}
-              placeholder={config.placeholder}
+              placeholder={configtype !== 'MEDICATION' && .placeholder}
               className="w-full h-24 bg-gray-800 border border-gray-700 rounded-lg p-3 text-gray-100 placeholder-gray-500 resize-none focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
             />
           </div>
