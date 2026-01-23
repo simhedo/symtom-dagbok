@@ -48,31 +48,42 @@ MAT-ANALYS:
    - FODMAP (lök, vitlök, bönor, linser, äpple, päron, honung, cashew)
    - Socker (godis, läsk, juice, sötsaker, kex)
    - Fett (friterat, fet mat, ost, nötter, avokado)
-   - Fiber (fullkorn, bönor, grönsaker, frukt)
+   - Fiber (fullkorn, bönor, grönsaker, frukt, havre)
    - Kryddor (stark mat, chili, peppar, curry)
    - Koffein (kaffe, te, läsk, energidryck)
    - Alkohol (vin, öl, sprit)
 3. Uppskatta mängd om möjligt
-4. Ge insiktsfull sammanfattning om potentiella risker
+4. VIKTIGT: Uppskatta total fibermängd i gram (fiberEstimateGrams). Referens:
+   - Grönsaker: ~2-4g/100g
+   - Frukt: ~2-3g/st
+   - Fullkornsbröd: ~6-8g/skiva
+   - Havregryn: ~10g/dl
+   - Bönor/linser: ~15g/dl
+   - Vitt bröd/pasta: ~1-2g/portion
+5. Ge insiktsfull sammanfattning om potentiella risker
 
 EXEMPEL:
-Input: "Åt lasagne till lunch"
+Input: "Åt havregrynsgröt med banan till frukost"
 Output: {
   "type": "FOOD",
-  "timestamp": "2026-01-22T12:00:00Z",
+  "timestamp": "2026-01-22T08:00:00Z",
   "ingredients": [
-    {"name": "Pasta", "amount": "medium portion", "triggers": [{"name": "Gluten"}, {"name": "FODMAP"}]},
-    {"name": "Köttfärs", "amount": "~150g", "triggers": [{"name": "Fett"}]},
-    {"name": "Tomatsås", "amount": "~100ml", "triggers": [{"name": "FODMAP"}]},
-    {"name": "Ost", "amount": "~50g", "triggers": [{"name": "Laktos"}, {"name": "Fett"}]},
-    {"name": "Grädde", "amount": "~50ml", "triggers": [{"name": "Laktos"}, {"name": "Fett"}]}
+    {"name": "Havregryn", "amount": "1 dl", "triggers": [{"name": "Fiber"}, {"name": "Gluten"}]},
+    {"name": "Mjölk", "amount": "~150ml", "triggers": [{"name": "Laktos"}]},
+    {"name": "Banan", "amount": "1 st", "triggers": [{"name": "Fiber"}, {"name": "FODMAP"}]}
   ],
-  "summary": "Lasagne innehåller flera potentiella triggers: gluten (pasta), laktos (ost, grädde), FODMAP (lök i såsen) och högt fettinnehåll. Kombinationen kan orsaka uppblåsthet."
+  "fiberEstimateGrams": 13,
+  "summary": "Bra fiberrik frukost (~13g fiber). Havre innehåller spår av gluten. Mogen banan kan ge FODMAP-reaktion hos känsliga."
 }
 ` : type === 'SYMPTOM' ? `
 SYMTOM-ANALYS:
-1. Typ: Gas (uppblåsthet, rapningar, flatulens) | Smärta (kramper, ont i magen) | Avföring (diarré, förstoppning, konsistens) | Annan
-2. Intensitet: 1-10 (1=knappt märkbart, 5=besvärande, 10=outhärdligt)
+1. Typ: Gas (uppblåsthet, rapningar, flatulens) | Smärta (kramper, ont i magen) | Avföring (diarré, förstoppning, bajsat, toalett, lös mage) | Annan
+2. Intensitet: 1-10 baserat på ordval:
+   - "lite", "lätt", "något" = 2-3
+   - "ganska", "rätt", "jobbigt" = 5-6
+   - "mycket", "jätte", "väldigt" = 7-8
+   - "extremt", "outhärdligt" = 9-10
+   - Om inget anges, uppskatta 5
 3. Beskriv symtomet tydligt
 
 EXEMPEL:

@@ -24,6 +24,7 @@ export interface AIAnalysis {
   symptomData?: SymptomData;
   tags?: string[];
   summary?: string;
+  fiberEstimateGrams?: number; // Uppskattad fibermängd för FOOD
 }
 
 export interface Entry {

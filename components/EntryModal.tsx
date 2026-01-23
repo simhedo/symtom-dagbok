@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { X, Clock } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { X, Clock, Plus, ChevronUp, ChevronDown } from 'lucide-react';
 import { EntryType } from '@/types';
 
 interface EntryModalProps {
@@ -31,7 +31,7 @@ const modalConfig: Record<EntryType, { title: string; placeholder: string; sugge
   MOOD: {
     title: 'Mående',
     placeholder: 'Hur mår du?',
-    suggestions: ['Bra', 'Okej', 'Stressad', 'Trött', 'Energisk']
+    suggestions: ['Bra', 'Okej', 'Stressad', 'Trött', 'Energisk', 'Glad', 'Ledsen', 'Orolig', 'Lugn', 'Irriterad']
   },
   MEDICATION: {
     title: 'Medicin',
@@ -60,15 +60,50 @@ function extractTimeFromText(text: string): string | null {
   return null;
 }
 
+// Kolla om texten nämner "igår"
+function containsYesterday(text: string): boolean {
+  return text.toLowerCase().includes('igår') || text.toLowerCase().includes('i går');
+}
+
+// Hämta custom moods från localStorage
+function getCustomMoods(): string[] {
+  if (typeof window === 'undefined') return [];
+  const saved = localStorage.getItem('custom_moods');
+  return saved ? JSON.parse(saved) : [];
+}
+
+function saveCustomMood(mood: string) {
+  const existing = getCustomMoods();
+  if (!existing.includes(mood)) {
+    localStorage.setItem('custom_moods', JSON.stringify([...existing, mood]));
+  }
+}
+
 export default function EntryModal({ isOpen, onClose, type, onSave, selectedDate }: EntryModalProps) {
   const [text, setText] = useState('');
   const [intensity, setIntensity] = useState<number | null>(null);
   const [bristol, setBristol] = useState<number | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showTimePicker, setShowTimePicker] = useState(false);
+  const [customMoods, setCustomMoods] = useState<string[]>([]);
+  const [newMood, setNewMood] = useState('');
+  const [showAddMood, setShowAddMood] = useState(false);
   
   // Tid - default till nu
   const now = new Date();
   const [time, setTime] = useState(formatTime(now));
+  const [hours, setHours] = useState(now.getHours());
+  const [minutes, setMinutes] = useState(now.getMinutes());
+  
+  // Ladda custom moods
+  useEffect(() => {
+    setCustomMoods(getCustomMoods());
+  }, []);
+  
+  // Synka time state med hours/minutes
+  useEffect(() => {
+    setTime(`${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`);
+  }, [hours, minutes]);
 
   if (!isOpen) return null;
 
@@ -79,7 +114,11 @@ export default function EntryModal({ isOpen, onClose, type, onSave, selectedDate
     (text.toLowerCase().includes('diarré') || 
      text.toLowerCase().includes('förstoppning') ||
      text.toLowerCase().includes('toalett') ||
-     text.toLowerCase().includes('avföring'));
+     text.toLowerCase().includes('avföring') ||
+     text.toLowerCase().includes('bajsa') ||
+     text.toLowerCase().includes('lös mage') ||
+     text.toLowerCase().includes('hård mage') ||
+     text.toLowerCase().includes('kissat') === false && text.toLowerCase().includes('wc'));
 
   // Auto-parse tid från text
   const extractedTime = extractTimeFromText(text);
@@ -94,7 +133,14 @@ export default function EntryModal({ isOpen, onClose, type, onSave, selectedDate
     
     // Skapa timestamp från vald tid och datum
     const [hours, minutes] = (extractedTime || time).split(':').map(Number);
-    const baseDate = selectedDate || new Date();
+    let baseDate = selectedDate || new Date();
+    
+    // Om texten nämner "igår", dra av en dag
+    if (containsYesterday(text)) {
+      baseDate = new Date(baseDate);
+      baseDate.setDate(baseDate.getDate() - 1);
+    }
+    
     const timestamp = new Date(
       baseDate.getFullYear(),
       baseDate.getMonth(),
@@ -122,23 +168,87 @@ export default function EntryModal({ isOpen, onClose, type, onSave, selectedDate
         <div className="flex items-center justify-between p-4 border-b border-gray-800">
           <div className="flex items-center gap-3">
             <h2 className="font-medium text-gray-100">{config.title}</h2>
-            <div className="flex items-center gap-1.5 text-gray-400">
+            <button
+              onClick={() => setShowTimePicker(!showTimePicker)}
+              className="flex items-center gap-1.5 text-gray-400 hover:text-gray-200 bg-gray-800 px-2.5 py-1 rounded-lg transition-colors"
+            >
               <Clock className="w-4 h-4" />
-              <input
-                type="time"
-                value={displayTime}
-                onChange={(e) => setTime(e.target.value)}
-                className="bg-transparent border-none text-sm text-gray-300 focus:outline-none focus:text-white cursor-pointer"
-              />
+              <span className="text-sm font-mono">{displayTime}</span>
               {extractedTime && (
-                <span className="text-xs text-gray-500 ml-1">(från text)</span>
+                <span className="text-xs text-gray-500">(auto)</span>
               )}
-            </div>
+            </button>
           </div>
           <button onClick={onClose} className="p-1 text-gray-400 hover:text-white">
             <X className="w-5 h-5" />
           </button>
         </div>
+        
+        {/* 24h Time Picker */}
+        {showTimePicker && (
+          <div className="px-4 py-3 border-b border-gray-800 bg-gray-850">
+            <div className="flex items-center justify-center gap-4">
+              {/* Timmar */}
+              <div className="flex flex-col items-center">
+                <button
+                  onClick={() => setHours(h => h === 23 ? 0 : h + 1)}
+                  className="p-1 text-gray-400 hover:text-white"
+                >
+                  <ChevronUp className="w-5 h-5" />
+                </button>
+                <span className="text-2xl font-mono text-white w-12 text-center">
+                  {String(hours).padStart(2, '0')}
+                </span>
+                <button
+                  onClick={() => setHours(h => h === 0 ? 23 : h - 1)}
+                  className="p-1 text-gray-400 hover:text-white"
+                >
+                  <ChevronDown className="w-5 h-5" />
+                </button>
+              </div>
+              
+              <span className="text-2xl font-mono text-gray-500">:</span>
+              
+              {/* Minuter */}
+              <div className="flex flex-col items-center">
+                <button
+                  onClick={() => setMinutes(m => m === 59 ? 0 : m + 1)}
+                  className="p-1 text-gray-400 hover:text-white"
+                >
+                  <ChevronUp className="w-5 h-5" />
+                </button>
+                <span className="text-2xl font-mono text-white w-12 text-center">
+                  {String(minutes).padStart(2, '0')}
+                </span>
+                <button
+                  onClick={() => setMinutes(m => m === 0 ? 59 : m - 1)}
+                  className="p-1 text-gray-400 hover:text-white"
+                >
+                  <ChevronDown className="w-5 h-5" />
+                </button>
+              </div>
+              
+              {/* Snabbval */}
+              <div className="flex flex-col gap-1 ml-4">
+                {[5, 15, 30].map(min => (
+                  <button
+                    key={min}
+                    onClick={() => setMinutes(m => (m + min) % 60)}
+                    className="text-xs px-2 py-1 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded transition-colors"
+                  >
+                    +{min}m
+                  </button>
+                ))}
+              </div>
+            </div>
+            <button
+              onClick={() => setShowTimePicker(false)}
+              className="w-full mt-3 text-sm text-blue-400 hover:text-blue-300"
+            >
+              Klar
+            </button>
+          </div>
+        )}
 
         {/* Content */}
         <div className="flex-1 p-4 space-y-4 overflow-y-auto">
@@ -151,8 +261,59 @@ export default function EntryModal({ isOpen, onClose, type, onSave, selectedDate
             className="w-full h-20 bg-gray-800 border border-gray-700 rounded-lg p-3 text-gray-100 placeholder-gray-500 resize-none focus:outline-none focus:border-gray-600"
           />
 
-          {/* Suggestions */}
-          {config.suggestions.length > 0 && !text && (
+          {/* Suggestions - horisontell scroll för MOOD */}
+          {type === 'MOOD' && !text && (
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 overflow-x-auto pb-2 -mx-4 px-4 scrollbar-hide">
+                {[...config.suggestions, ...customMoods].map((s) => (
+                  <button
+                    key={s}
+                    onClick={() => setText(s)}
+                    className="flex-shrink-0 px-4 py-2 text-sm bg-gray-800 hover:bg-gray-700 active:bg-gray-600 text-gray-200 rounded-full border border-gray-700 transition-colors whitespace-nowrap"
+                  >
+                    {s}
+                  </button>
+                ))}
+                <button
+                  onClick={() => setShowAddMood(true)}
+                  className="flex-shrink-0 px-3 py-2 text-sm bg-gray-800/50 hover:bg-gray-700 text-gray-400 rounded-full border border-dashed border-gray-600 transition-colors"
+                >
+                  <Plus className="w-4 h-4" />
+                </button>
+              </div>
+              
+              {/* Lägg till nytt mående */}
+              {showAddMood && (
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={newMood}
+                    onChange={(e) => setNewMood(e.target.value)}
+                    placeholder="Nytt mående..."
+                    className="flex-1 bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-100 placeholder-gray-500 focus:outline-none focus:border-gray-600"
+                    autoFocus
+                  />
+                  <button
+                    onClick={() => {
+                      if (newMood.trim()) {
+                        saveCustomMood(newMood.trim());
+                        setCustomMoods([...customMoods, newMood.trim()]);
+                        setText(newMood.trim());
+                        setNewMood('');
+                        setShowAddMood(false);
+                      }
+                    }}
+                    className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-sm rounded-lg transition-colors"
+                  >
+                    Lägg till
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+          
+          {/* Suggestions - vanlig wrap för andra typer */}
+          {type !== 'MOOD' && config.suggestions.length > 0 && !text && (
             <div className="flex flex-wrap gap-2">
               {config.suggestions.map((s) => (
                 <button

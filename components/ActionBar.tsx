@@ -1,6 +1,6 @@
 'use client';
 
-import { UtensilsCrossed, Activity, Brain, AlertCircle, Pill } from 'lucide-react';
+import { UtensilsCrossed, Activity, Brain, AlertCircle, Pill, Dumbbell } from 'lucide-react';
 import { EntryType } from '@/types';
 
 interface ActionBarProps {
@@ -12,12 +12,13 @@ export default function ActionBar({ onAction }: ActionBarProps) {
     { type: 'FOOD' as EntryType, icon: UtensilsCrossed, label: 'Mat' },
     { type: 'SYMPTOM' as EntryType, icon: AlertCircle, label: 'Symptom' },
     { type: 'MEDICATION' as EntryType, icon: Pill, label: 'Medicin' },
+    { type: 'EXERCISE' as EntryType, icon: Dumbbell, label: 'Träning' },
     { type: 'MOOD' as EntryType, icon: Brain, label: 'Mående' },
   ];
 
   return (
     <div className="fixed bottom-0 left-0 right-0 bg-gray-900/95 backdrop-blur-lg border-t border-gray-800 p-3 pb-safe z-40">
-      <div className="grid grid-cols-4 gap-3 max-w-md mx-auto">
+      <div className="grid grid-cols-5 gap-2 max-w-lg mx-auto">
         {actions.map(({ type, icon: Icon, label }) => (
           <button
             key={type}

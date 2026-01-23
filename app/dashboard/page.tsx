@@ -90,10 +90,21 @@ export default function DashboardPage() {
         analysis.summary = text;
       }
 
+      // Använd AI:ns timestamp om den finns, annars användarens valda tid
+      let finalTimestamp = timestamp;
+      if (analysis.timestamp) {
+        const aiTime = new Date(analysis.timestamp);
+        // Endast använd AI:ns tid om den verkar rimlig (inom samma dag eller igår)
+        const daysDiff = Math.abs(aiTime.getTime() - timestamp.getTime()) / (1000 * 60 * 60 * 24);
+        if (daysDiff <= 1 && !isNaN(aiTime.getTime())) {
+          finalTimestamp = aiTime;
+        }
+      }
+
       const newEntry: Entry = {
         id: Date.now().toString(),
         text,
-        createdAt: timestamp.toISOString(),
+        createdAt: finalTimestamp.toISOString(),
         analysis,
         userId: user.id,
       };
