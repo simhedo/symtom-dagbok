@@ -16,8 +16,15 @@ A mobile-optimized MVP for tracking gut health with AI-powered analysis.
 ### 🔍 Error Checking - VIKTIGT!
 - **ALLTID** använd `get_errors` verktyget INNAN du gör ändringar
 - **ALLTID** kör `get_errors` EFTER du gjort ändringar för att verifiera
+- **ALLTID** kör `npm run build` INNAN du pushar till git
 - Fixa alla kompileringsfel omedelbart
 - Vänta INTE på att användaren rapporterar fel
+
+**WORKFLOW:**
+1. Gör ändringar
+2. Kör `get_errors` för att kolla TypeScript-fel
+3. Kör `npm run build` för att verifiera att allt kompilerar
+4. Först då - commit och pusha
 
 ### 📱 Design Principles
 - Mobile-first design med dark theme

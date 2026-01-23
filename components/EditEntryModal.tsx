@@ -14,10 +14,11 @@ interface EditEntryModalProps {
 }
 
 const modalTitles = {
-  FOOD: '🍽️ Redigera Mat',
-  SYMPTOM: '🤢 Redigera Symtom',
-  EXERCISE: '💪 Redigera Träning',
-  MOOD: '🧠 Redigera Mående',
+  FOOD: 'Redigera Mat',
+  SYMPTOM: 'Redigera Symtom',
+  EXERCISE: 'Redigera Aktivitet',
+  MOOD: 'Redigera Mående',
+  MEDICATION: 'Redigera Medicin',
 };
 
 export default function EditEntryModal({ isOpen, onClose, entry, onSave, onDelete }: EditEntryModalProps) {

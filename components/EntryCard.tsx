@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { Entry } from '@/types';
-import { UtensilsCrossed, Activity, Brain, Timer, Edit2, Trash2 } from 'lucide-react';
+import { UtensilsCrossed, Activity, Brain, AlertCircle, Edit2, Trash2, Pill } from 'lucide-react';
 
 interface EntryCardProps {
   entry: Entry;
@@ -12,9 +12,10 @@ interface EntryCardProps {
 
 const iconMap = {
   FOOD: UtensilsCrossed,
-  SYMPTOM: Timer,
+  SYMPTOM: AlertCircle,
   EXERCISE: Activity,
   MOOD: Brain,
+  MEDICATION: Pill,
 };
 
 export default function EntryCard({ entry, onEdit, onDelete }: EntryCardProps) {
@@ -24,7 +25,7 @@ export default function EntryCard({ entry, onEdit, onDelete }: EntryCardProps) {
   const [showActions, setShowActions] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
 
-  const Icon = entry.analysis?.type ? iconMap[entry.analysis.type] : Timer;
+  const Icon = entry.analysis?.type ? iconMap[entry.analysis.type] : AlertCircle;
   
   const minSwipeDistance = 50;
 

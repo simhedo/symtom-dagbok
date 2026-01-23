@@ -1,253 +1,209 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { X, Sparkles, ChevronDown, ChevronUp } from 'lucide-react';
+import { useState } from 'react';
+import { X, Clock } from 'lucide-react';
 import { EntryType } from '@/types';
-import { getEntries } from '@/lib/storage';
 
 interface EntryModalProps {
   isOpen: boolean;
   onClose: () => void;
   type: EntryType;
-  onSave: (text: string, type: EntryType) => void;
+  onSave: (text: string, type: EntryType, timestamp: Date) => void;
+  selectedDate?: Date;
 }
 
-const modalConfig = {
+const modalConfig: Record<EntryType, { title: string; placeholder: string; suggestions: string[] }> = {
   FOOD: {
-    title: '🍽️ Mat & Dryck',
-    placeholder: 'Vad åt/drack du?',
-    quickOptions: [
-      'Frukost ✅',
-      'Lunch ✅', 
-      'Middag ✅',
-      'Mellanmål',
-      'Kaffe ☕',
-      'Vatten 💧'
-    ],
-    detailPrompts: [
-      'Känner du igen några triggers? (laktos, gluten, socker...)',
-      'Hur mätt blev du? (1-10)',
-      'Åt du stressad/snabbt?'
-    ]
+    title: 'Mat',
+    placeholder: 'Vad åt du?',
+    suggestions: ['Frukost', 'Lunch', 'Middag', 'Fika', 'Kaffe']
   },
   SYMPTOM: {
-    title: '🤢 Symptom',
-    placeholder: 'Hur känner du dig?',
-    quickOptions: [
-      'Uppblåst 😮‍💨',
-      'Ont i magen 😣',
-      'Gas 💨',
-      'Illamående 🤢',
-      'Trött 😴',
-      'Huvudvärk 🤕'
-    ],
-    detailPrompts: [
-      'Hur intensivt? (1-10)',
-      'Var sitter det? (övre/nedre magen)',
-      'Började nyss eller för länge sen?'
-    ]
-  },
-  MEDICATION: {
-    title: '💊 Medicin',
-    placeholder: 'Vilken medicin tog du?',
-    quickOptions: [], // Fylls med tidigare mediciner
-    detailPrompts: [
-      'Dos? (ex: 20mg, 1 tablett)',
-      'Varför tar du den? (symptom/förebyggande)',
-      'Var det receptbelagt eller receptfritt?'
-    ]
+    title: 'Symptom',
+    placeholder: 'Beskriv hur du mår',
+    suggestions: ['Uppblåst', 'Magont', 'Illamående', 'Diarré', 'Förstoppning', 'Trött']
   },
   EXERCISE: {
-    title: '💪 Aktivitet',
+    title: 'Aktivitet',
     placeholder: 'Vad gjorde du?',
-    quickOptions: [
-      'Promenad 🚶',
-      'Löpning 🏃',
-      'Gym 🏋️',
-      'Yoga 🧘',
-      'Cykling 🚴',
-      'Simning 🏊'
-    ],
-    detailPrompts: [
-      'Hur länge?',
-      'Hur intensivt? (lätt/medel/hårt)'
-    ]
+    suggestions: ['Promenad', 'Träning', 'Yoga', 'Löpning']
   },
   MOOD: {
-    title: '🧠 Allmänt Mående',
-    placeholder: 'Hur mår du idag?',
-    quickOptions: [
-      'Bra! 😊',
-      'Okej 😐',
-      'Lite dåligt 😔',
-      'Stressad 😰',
-      'Energilös 😮‍💨',
-      'Arg/Frustrerad 😠'
-    ],
-    detailPrompts: [
-      'Stresskänsla? (1-10)',
-      'Sömnkvalitet? (bra/dålig)',
-  const [previousMedications, setPreviousMedications] = useState<string[]>([]);
+    title: 'Mående',
+    placeholder: 'Hur mår du?',
+    suggestions: ['Bra', 'Okej', 'Stressad', 'Trött', 'Energisk']
+  },
+  MEDICATION: {
+    title: 'Medicin',
+    placeholder: 'Vilken medicin?',
+    suggestions: []
+  }
+};
 
-  // Load previous medications when modal opens for MEDICATION type
-  useEffect(() => {
-    if (isOpen && type === 'MEDICATION') {
-      loadPreviousMedications();
-    }
-  }, [isOpen, type]);
+// Bristol-skala (1-7) - visas endast vid toalettrelaterade symptom
+const bristolLabels = ['Hård', '', 'Normal', '', 'Lös', '', 'Vattnig'];
 
-  const loadPreviousMedications = async () => {
-    const entries = await getEntries();
-    const medEntries = entries.filter(e => e.analysis?.type === 'MEDICATION');
-    const meds = medEntries.map(e => e.text.trim());
-    const uniqueMeds = [...new Set(meds)].slice(0, 8); // Top 8 most recent unique
-    setPreviousMedications(uniqueMeds);
-  };
+// Formatera tid som HH:MM
+function formatTime(date: Date): string {
+  return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+}
 
-  if (!isOpen) return null;
-
-  const config = modalConfig[type];
-  const quickOptions = type === 'MEDICATION' && previousMedications.length > 0 
-    ? previousMedications 
-    : config.quickOptions
-
-export default function EntryModal({ isOpen, onClose, type, onSave }: EntryModalProps) {
+export default function EntryModal({ isOpen, onClose, type, onSave, selectedDate }: EntryModalProps) {
   const [text, setText] = useState('');
-  const [showDetails, setShowDetails] = useState(false);
-  const [showAiHint, setShowAiHint] = useState(true);
+  const [intensity, setIntensity] = useState<number | null>(null);
+  const [bristol, setBristol] = useState<number | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // Tid - default till nu
+  const now = new Date();
+  const [time, setTime] = useState(formatTime(now));
 
   if (!isOpen) return null;
 
   const config = modalConfig[type];
-
-  const handleQuickSelect = (option: string) => {
-    setText(option);
-  };
+  
+  const isSymptom = type === 'SYMPTOM';
+  const showBristol = isSymptom && 
+    (text.toLowerCase().includes('diarré') || 
+     text.toLowerCase().includes('förstoppning') ||
+     text.toLowerCase().includes('toalett') ||
+     text.toLowerCase().includes('avföring'));
 
   const handleSave = async () => {
     if (!text.trim()) return;
     
+    let finalText = text;
+    if (intensity) finalText += ` (${intensity}/10)`;
+    if (bristol) finalText += ` [Bristol ${bristol}]`;
+    
+    // Skapa timestamp från vald tid och datum
+    const [hours, minutes] = time.split(':').map(Number);
+    const baseDate = selectedDate || new Date();
+    const timestamp = new Date(
+      baseDate.getFullYear(),
+      baseDate.getMonth(),
+      baseDate.getDate(),
+      hours,
+      minutes
+    );
+    
     setIsSubmitting(true);
     try {
-      await onSave(text, type);
+      await onSave(finalText, type, timestamp);
       setText('');
-      setShowDetails(false);
-      setShowAiHint(true);
+      setIntensity(null);
+      setBristol(null);
+      setTime(formatTime(new Date())); // Reset till nu
     } finally {
       setIsSubmitting(false);
     }
-  };{quickOptions.length > 0 && (
-            <div>
-              <p className="text-sm text-gray-400 mb-2">
-                {type === 'MEDICATION' && previousMedications.length > 0 
-                  ? 'Tidigare mediciner:' 
-                  : 'Snabbval:'}
-              </p>
-              <div className="grid grid-cols-2 gap-2">
-                {quickOptions.map((option) => (
-                  <button
-                    key={option}
-                    onClick={() => handleQuickSelect(option)}
-                    className={`p-3 rounded-lg border transition-colors text-left ${
-                      text === option
-                        ? 'bg-blue-600 border-blue-500 text-white'
-                        : 'bg-gray-800 border-gray-700 hover:border-gray-600 text-gray-300'
-                    }`}
-                  >
-                    {option}
-                  </button>
-                ))}
-              </div>
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/90 z-50 flex items-end sm:items-center justify-center">
+      <div className="bg-gray-900 w-full sm:max-w-md sm:rounded-xl rounded-t-xl max-h-[85vh] flex flex-col">
+        {/* Header */}
+        <div className="flex items-center justify-between p-4 border-b border-gray-800">
+          <div className="flex items-center gap-3">
+            <h2 className="font-medium text-gray-100">{config.title}</h2>
+            <div className="flex items-center gap-1.5 text-gray-400">
+              <Clock className="w-4 h-4" />
+              <input
+                type="time"
+                value={time}
+                onChange={(e) => setTime(e.target.value)}
+                className="bg-transparent border-none text-sm text-gray-300 focus:outline-none focus:text-white cursor-pointer"
+              />
             </div>
-          )}ssName="flex-1 p-4 overflow-y-auto space-y-4">
-          {/* Quick Options */}
-          <div>
-            <p className="text-sm text-gray-400 mb-2">Snabbval:</p>
-            <div className="grid grid-cols-2 gap-2">
-              {config.quickOptions.map((option) => (
+          </div>
+          <button onClick={onClose} className="p-1 text-gray-400 hover:text-white">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 p-4 space-y-4 overflow-y-auto">
+          {/* Text input */}
+          <textarea
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            placeholder={config.placeholder}
+            autoFocus
+            className="w-full h-20 bg-gray-800 border border-gray-700 rounded-lg p-3 text-gray-100 placeholder-gray-500 resize-none focus:outline-none focus:border-gray-600"
+          />
+
+          {/* Suggestions */}
+          {config.suggestions.length > 0 && !text && (
+            <div className="flex flex-wrap gap-2">
+              {config.suggestions.map((s) => (
                 <button
-                  key={option}
-                  onClick={() => handleQuickSelect(option)}
-                  className={`p-3 rounded-lg border transition-colors text-left ${
-                    text === option
-                      ? 'bg-blue-600 border-blue-500 text-white'
-                      : 'bg-gray-800 border-gray-700 hover:border-gray-600 text-gray-300'
-                  }`}
+                  key={s}
+                  onClick={() => setText(s)}
+                  className="px-3 py-1.5 text-sm bg-gray-800 hover:bg-gray-750 text-gray-300 rounded-full border border-gray-700 transition-colors"
                 >
-                  {option}
+                  {s}
                 </button>
               ))}
             </div>
-          </div>
+          )}
 
-          {/* Custom Text */}
-          <div>
-            <p className="text-sm text-gray-400 mb-2">Eller skriv fritt:</p>
-            <textarea
-              value={text}
-              onChange={(e) => setText(e.target.value)}
-              placeholder={configtype !== 'MEDICATION' && .placeholder}
-              className="w-full h-24 bg-gray-800 border border-gray-700 rounded-lg p-3 text-gray-100 placeholder-gray-500 resize-none focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-            />
-          </div>
-
-          {/* AI Hint */}
-          {showAiHint && text && (
-            <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3 flex gap-2">
-              <Sparkles className="w-5 h-5 text-blue-400 flex-shrink-0 mt-0.5" />
-              <div className="text-sm">
-                <p className="text-blue-400 font-medium mb-1">AI kommer analysera</p>
-                <p className="text-gray-400 text-xs">
-                  {type === 'FOOD' && 'Hittar ingredienser, triggers och beräknar näring automatiskt'}
-                  {type === 'SYMPTOM' && 'Kopplar ihop med mat, söker mönster och trender'}
-                  {type === 'EXERCISE' && 'Spårar aktivitetsnivå och korrelerar med mående'}
-                  {type === 'MOOD' && 'Analyserar sammanhang med mat, sömn och stress'}
-                </p>
+          {/* Intensity slider - bara för symptom */}
+          {isSymptom && text && (
+            <div className="space-y-2">
+              <div className="flex justify-between text-sm text-gray-400">
+                <span>Intensitet</span>
+                <span>{intensity || '–'}/10</span>
+              </div>
+              <input
+                type="range"
+                min="1"
+                max="10"
+                value={intensity || 5}
+                onChange={(e) => setIntensity(Number(e.target.value))}
+                className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-blue-500"
+              />
+              <div className="flex justify-between text-xs text-gray-500">
+                <span>Milt</span>
+                <span>Svårt</span>
               </div>
             </div>
           )}
 
-          {/* Optional Details */}
-          <button
-            onClick={() => setShowDetails(!showDetails)}
-            className="flex items-center gap-2 text-sm text-gray-400 hover:text-gray-300 transition-colors"
-          >
-            {showDetails ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-            <span>Lägg till detaljer (valfritt)</span>
-          </button>
-
-          {showDetails && (
-            <div className="space-y-3 pl-6 border-l-2 border-gray-700">
-              {config.detailPrompts.map((prompt, idx) => (
-                <div key={idx}>
-                  <label className="text-xs text-gray-500 mb-1 block">{prompt}</label>
-                  <input
-                    type="text"
-                    placeholder="..."
-                    className="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500"
-                  />
-                </div>
-              ))}
+          {/* Bristol scale - diskret, bara vid behov */}
+          {showBristol && (
+            <div className="space-y-2">
+              <div className="flex justify-between text-sm text-gray-400">
+                <span>Konsistens</span>
+                <span>{bristol ? `${bristol} - ${bristolLabels[bristol - 1] || ''}` : '–'}</span>
+              </div>
+              <div className="flex gap-1">
+                {[1, 2, 3, 4, 5, 6, 7].map((n) => (
+                  <button
+                    key={n}
+                    onClick={() => setBristol(bristol === n ? null : n)}
+                    className={`flex-1 h-8 rounded text-sm transition-colors ${
+                      bristol === n
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-gray-800 text-gray-400 hover:bg-gray-750'
+                    }`}
+                  >
+                    {n}
+                  </button>
+                ))}
+              </div>
             </div>
           )}
         </div>
 
         {/* Footer */}
-        <div className="p-4 border-t border-gray-800 space-y-2">
+        <div className="p-4 border-t border-gray-800">
           <button
             onClick={handleSave}
             disabled={!text.trim() || isSubmitting}
-            className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-700 disabled:text-gray-500 text-white font-medium py-3 rounded-xl transition-colors"
+            className="w-full bg-blue-600 hover:bg-blue-500 disabled:bg-gray-700 disabled:text-gray-500 text-white font-medium py-3 rounded-lg transition-colors"
           >
-            {isSubmitting ? 'Sparar & analyserar...' : 'Spara'}
+            {isSubmitting ? 'Sparar...' : 'Spara'}
           </button>
-          
-          {text && (
-            <p className="text-xs text-center text-gray-500">
-              AI-analys körs i bakgrunden - inget steg behövs! ✨
-            </p>
-          )}
         </div>
       </div>
     </div>

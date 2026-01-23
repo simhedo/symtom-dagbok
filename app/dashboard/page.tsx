@@ -9,11 +9,12 @@ import ActionBar from '@/components/ActionBar';
 import EntryModal from '@/components/EntryModal';
 import EditEntryModal from '@/components/EditEntryModal';
 import Calendar from '@/components/Calendar';
-import { CalendarDays, List, Rows3, BarChart3, LogOut } from 'lucide-react';
+import { CalendarDays, List, Rows3, BarChart3, LogOut, Clock } from 'lucide-react';
 import CompactEntryCard from '@/components/CompactEntryCard';
 import Insights from '@/components/Insights';
+import TimelineView from '@/components/TimelineView';
 
-type ViewMode = 'list' | 'compact' | 'calendar' | 'insights';
+type ViewMode = 'timeline' | 'list' | 'calendar' | 'insights';
 
 export default function DashboardPage() {
   const [user, setUser] = useState<User | null>(null);
@@ -23,7 +24,7 @@ export default function DashboardPage() {
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [selectedEntry, setSelectedEntry] = useState<Entry | null>(null);
   const [selectedType, setSelectedType] = useState<EntryType>('FOOD');
-  const [viewMode, setViewMode] = useState<ViewMode>('list');
+  const [viewMode, setViewMode] = useState<ViewMode>('timeline');
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const router = useRouter();
 
@@ -62,7 +63,7 @@ export default function DashboardPage() {
     setModalOpen(true);
   };
 
-  const handleSave = async (text: string, type: EntryType) => {
+  const handleSave = async (text: string, type: EntryType, timestamp: Date) => {
     if (!user) return;
 
     try {
@@ -88,20 +89,10 @@ export default function DashboardPage() {
         analysis.summary = text;
       }
 
-      // Use selected date if not today, otherwise use current time
-      const isToday = selectedDate.toDateString() === new Date().toDateString();
-      const entryDate = isToday ? new Date() : new Date(
-        selectedDate.getFullYear(),
-        selectedDate.getMonth(),
-        selectedDate.getDate(),
-        new Date().getHours(),
-        new Date().getMinutes()
-      );
-
       const newEntry: Entry = {
         id: Date.now().toString(),
         text,
-        createdAt: entryDate.toISOString(),
+        createdAt: timestamp.toISOString(),
         analysis,
         userId: user.id,
       };
@@ -178,24 +169,26 @@ export default function DashboardPage() {
             {/* View Toggle */}
             <div className="flex gap-1 bg-gray-800 p-1 rounded-lg">
               <button
+                onClick={() => setViewMode('timeline')}
+                className={`p-2 rounded transition-colors ${
+                  viewMode === 'timeline'
+                    ? 'bg-gray-700 text-white'
+                    : 'text-gray-400 hover:text-gray-200'
+                }`}
+                title="Tidslinje"
+              >
+                <Clock className="w-5 h-5" />
+              </button>
+              <button
                 onClick={() => setViewMode('list')}
                 className={`p-2 rounded transition-colors ${
                   viewMode === 'list'
                     ? 'bg-gray-700 text-white'
                     : 'text-gray-400 hover:text-gray-200'
                 }`}
+                title="Lista"
               >
                 <List className="w-5 h-5" />
-              </button>
-              <button
-                onClick={() => setViewMode('compact')}
-                className={`p-2 rounded transition-colors ${
-                  viewMode === 'compact'
-                    ? 'bg-gray-700 text-white'
-                    : 'text-gray-400 hover:text-gray-200'
-                }`}
-              >
-                <Rows3 className="w-5 h-5" />
               </button>
               <button
                 onClick={() => setViewMode('calendar')}
@@ -204,6 +197,7 @@ export default function DashboardPage() {
                     ? 'bg-gray-700 text-white'
                     : 'text-gray-400 hover:text-gray-200'
                 }`}
+                title="Kalender"
               >
                 <CalendarDays className="w-5 h-5" />
               </button>
@@ -214,6 +208,7 @@ export default function DashboardPage() {
                     ? 'bg-gray-700 text-white'
                     : 'text-gray-400 hover:text-gray-200'
                 }`}
+                title="Insikter"
               >
                 <BarChart3 className="w-5 h-5" />
               </button>
@@ -234,37 +229,50 @@ export default function DashboardPage() {
               selectedDate={selectedDate}
             />
           </div>
+        ) : viewMode === 'timeline' ? (
+          <TimelineView entries={entries} onEdit={handleEdit} />
         ) : null}
 
-        {/* Entries List */}
-        {entries.length === 0 ? (
-          <div className="text-center py-12 text-gray-500">
-            <p className="text-lg mb-2">
-              {viewMode === 'calendar' ? 'Inga inlägg detta datum' : 'Inga inlägg idag ännu'}
-            </p>
-            <p className="text-sm">Tryck på en knapp nedan för att börja</p>
-          </div>
-        ) : (
-          <div>
-            {viewMode === 'compact' ? (
-              entries.map((entry) => (
-                <CompactEntryCard
-                  key={entry.id}
-                  entry={entry}
-                  onEdit={handleEdit}
-                />
-              ))
-            ) : (
-              entries.map((entry) => (
+        {/* Entries List - bara för list-vy */}
+        {viewMode === 'list' && (
+          entries.length === 0 ? (
+            <div className="text-center py-12 text-gray-500">
+              <p className="text-lg mb-2">Inga inlägg idag ännu</p>
+              <p className="text-sm">Tryck på en knapp nedan för att börja</p>
+            </div>
+          ) : (
+            <div>
+              {entries.map((entry) => (
                 <EntryCard 
                   key={entry.id} 
                   entry={entry}
                   onEdit={handleEdit}
                   onDelete={handleDelete}
                 />
-              ))
-            )}
-          </div>
+              ))}
+            </div>
+          )
+        )}
+
+        {/* Kalender datum-entries */}
+        {viewMode === 'calendar' && (
+          entries.length === 0 ? (
+            <div className="text-center py-8 text-gray-500">
+              <p className="text-lg mb-2">Inga inlägg detta datum</p>
+              <p className="text-sm">Välj ett datum eller lägg till nytt</p>
+            </div>
+          ) : (
+            <div>
+              {entries.map((entry) => (
+                <EntryCard 
+                  key={entry.id} 
+                  entry={entry}
+                  onEdit={handleEdit}
+                  onDelete={handleDelete}
+                />
+              ))}
+            </div>
+          )
         )}
       </div>
 
@@ -277,6 +285,7 @@ export default function DashboardPage() {
         onClose={() => setModalOpen(false)}
         type={selectedType}
         onSave={handleSave}
+        selectedDate={selectedDate}
       />
 
       {/* Edit Entry Modal */}
