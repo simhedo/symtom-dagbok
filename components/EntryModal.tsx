@@ -8,7 +8,7 @@ interface EntryModalProps {
   isOpen: boolean;
   onClose: () => void;
   type: EntryType;
-  onSave: (text: string, type: EntryType, timestamp: Date) => void;
+  onSave: (text: string, type: EntryType, timestamp: Date, meta?: { gasLevel?: number }) => void;
   selectedDate?: Date;
 }
 
@@ -42,6 +42,7 @@ const modalConfig: Record<EntryType, { title: string; placeholder: string; sugge
 
 // Bristol-skala (1-7) - visas endast vid toalettrelaterade symptom
 const bristolLabels = ['Hård', '', 'Normal', '', 'Lös', '', 'Vattnig'];
+const gasLabels = ['Ingen', 'Lite', 'Måttlig', 'Mycket'];
 
 // Formatera tid som HH:MM
 function formatTime(date: Date): string {
@@ -83,6 +84,7 @@ export default function EntryModal({ isOpen, onClose, type, onSave, selectedDate
   const [text, setText] = useState('');
   const [intensity, setIntensity] = useState<number | null>(null);
   const [bristol, setBristol] = useState<number | null>(null);
+  const [gasLevel, setGasLevel] = useState<number | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showTimePicker, setShowTimePicker] = useState(false);
   const [customMoods, setCustomMoods] = useState<string[]>([]);
@@ -151,10 +153,11 @@ export default function EntryModal({ isOpen, onClose, type, onSave, selectedDate
     
     setIsSubmitting(true);
     try {
-      await onSave(finalText, type, timestamp);
+      await onSave(finalText, type, timestamp, { gasLevel: gasLevel ?? undefined });
       setText('');
       setIntensity(null);
       setBristol(null);
+      setGasLevel(null);
       setTime(formatTime(new Date())); // Reset till nu
     } finally {
       setIsSubmitting(false);
@@ -345,6 +348,31 @@ export default function EntryModal({ isOpen, onClose, type, onSave, selectedDate
               <div className="flex justify-between text-xs text-gray-500">
                 <span>Milt</span>
                 <span>Svårt</span>
+              </div>
+            </div>
+          )}
+
+          {/* Gaser - valfritt */}
+          {isSymptom && (
+            <div className="space-y-2">
+              <div className="flex justify-between text-sm text-gray-400">
+                <span>Gaser</span>
+                <span>{gasLevel === null ? '–' : gasLabels[gasLevel]}</span>
+              </div>
+              <div className="flex gap-2">
+                {[0, 1, 2, 3].map((level) => (
+                  <button
+                    key={level}
+                    onClick={() => setGasLevel(gasLevel === level ? null : level)}
+                    className={`flex-1 h-8 rounded text-sm transition-colors ${
+                      gasLevel === level
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-gray-800 text-gray-400 hover:bg-gray-750'
+                    }`}
+                  >
+                    {gasLabels[level]}
+                  </button>
+                ))}
               </div>
             </div>
           )}

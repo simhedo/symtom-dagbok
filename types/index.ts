@@ -15,6 +15,7 @@ export interface SymptomData {
   type: 'Gas' | 'Smärta' | 'Avföring' | 'Annan';
   intensity: number; // 1-10
   description?: string;
+  gasLevel?: number; // 0-3
 }
 
 export interface AIAnalysis {

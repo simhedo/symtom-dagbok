@@ -1,13 +1,56 @@
 'use client';
 
+import { useMemo, useState } from 'react';
 import { Entry } from '@/types';
 import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import TagDotCalendar from '@/components/TagDotCalendar';
 
 interface InsightsProps {
   entries: Entry[];
 }
 
 export default function Insights({ entries }: InsightsProps) {
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [tagQuery, setTagQuery] = useState('');
+
+  const normalizeTag = (tag: string) => tag.trim().toLowerCase();
+
+  const getEntryTags = (entry: Entry): string[] => {
+    const tags = new Set<string>();
+
+    entry.analysis?.tags?.forEach((tag) => tags.add(normalizeTag(tag)));
+    entry.analysis?.ingredients?.forEach((ingredient) => {
+      if (ingredient.name) tags.add(normalizeTag(ingredient.name));
+      ingredient.triggers?.forEach((trigger) => {
+        if (trigger.name) tags.add(normalizeTag(trigger.name));
+      });
+    });
+
+    return Array.from(tags);
+  };
+
+  const allTags = useMemo(() => {
+    const tagSet = new Set<string>();
+    entries.forEach((entry) => {
+      getEntryTags(entry).forEach((tag) => tagSet.add(tag));
+    });
+    return Array.from(tagSet).sort();
+  }, [entries]);
+
+  const filteredTags = useMemo(() => {
+    const query = normalizeTag(tagQuery);
+    if (!query) return allTags;
+    return allTags.filter((tag) => tag.includes(query));
+  }, [allTags, tagQuery]);
+
+  const toggleTag = (tag: string) => {
+    setSelectedTags((prev) =>
+      prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]
+    );
+  };
+
+  const displayTag = (tag: string) => tag.charAt(0).toUpperCase() + tag.slice(1);
+
   // Helper: Get date key for grouping
   const getDateKey = (date: Date) => {
     return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
@@ -159,6 +202,53 @@ export default function Insights({ entries }: InsightsProps) {
       <div className="bg-gray-900 rounded-xl border border-gray-800 p-6">
         <h2 className="text-2xl font-bold mb-2">📊 Insikter & Analys</h2>
         <p className="text-sm text-gray-400">Långsiktiga mönster senaste 30 dagarna</p>
+      </div>
+
+      {/* Taggfilter & Förekomst */}
+      <div className="bg-gray-900 rounded-xl border border-gray-800 p-6 space-y-4">
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-semibold">Taggar över tid</h3>
+          <span className="text-xs text-gray-500">Välj en tagg för att se prickar</span>
+        </div>
+
+        <TagDotCalendar entries={entries} selectedTags={selectedTags} />
+
+        <div className="space-y-3">
+          <input
+            type="text"
+            value={tagQuery}
+            onChange={(e) => setTagQuery(e.target.value)}
+            placeholder="Sök ingrediens/medicin…"
+            className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-100 placeholder-gray-500 focus:outline-none focus:border-gray-600"
+          />
+          <div className="flex flex-wrap gap-2">
+            {filteredTags.length === 0 ? (
+              <span className="text-xs text-gray-500">Inga taggar matchar</span>
+            ) : (
+              filteredTags.slice(0, 40).map((tag) => (
+                <button
+                  key={tag}
+                  onClick={() => toggleTag(tag)}
+                  className={`px-3 py-1.5 text-xs rounded-full border transition-colors ${
+                    selectedTags.includes(tag)
+                      ? 'bg-blue-600 border-blue-500 text-white'
+                      : 'bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700'
+                  }`}
+                >
+                  {displayTag(tag)}
+                </button>
+              ))
+            )}
+          </div>
+          {selectedTags.length > 0 && (
+            <button
+              onClick={() => setSelectedTags([])}
+              className="text-xs text-gray-400 hover:text-gray-300"
+            >
+              Rensa filter
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Trend Summary */}

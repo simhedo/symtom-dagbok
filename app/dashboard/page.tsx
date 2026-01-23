@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { getUser, getTodayEntries, getEntries, saveEntry, updateEntry, deleteEntry } from '@/lib/storage';
 import { Entry, EntryType, User } from '@/types';
@@ -9,7 +9,6 @@ import ActionBar from '@/components/ActionBar';
 import EntryModal from '@/components/EntryModal';
 import EditEntryModal from '@/components/EditEntryModal';
 import Calendar from '@/components/Calendar';
-import TagDotCalendar from '@/components/TagDotCalendar';
 import { CalendarDays, List, Rows3, BarChart3, LogOut, Clock } from 'lucide-react';
 import CompactEntryCard from '@/components/CompactEntryCard';
 import Insights from '@/components/Insights';
@@ -27,8 +26,6 @@ export default function DashboardPage() {
   const [selectedType, setSelectedType] = useState<EntryType>('FOOD');
   const [viewMode, setViewMode] = useState<ViewMode>('timeline');
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
-  const [selectedTags, setSelectedTags] = useState<string[]>([]);
-  const [tagQuery, setTagQuery] = useState('');
   const router = useRouter();
 
   useEffect(() => {
@@ -67,7 +64,7 @@ export default function DashboardPage() {
     setModalOpen(true);
   };
 
-  const handleSave = async (text: string, type: EntryType, timestamp: Date) => {
+  const handleSave = async (text: string, type: EntryType, timestamp: Date, meta?: { gasLevel?: number }) => {
     if (!user) return;
 
     try {
@@ -101,6 +98,21 @@ export default function DashboardPage() {
         const daysDiff = Math.abs(aiTime.getTime() - timestamp.getTime()) / (1000 * 60 * 60 * 24);
         if (daysDiff <= 1 && !isNaN(aiTime.getTime())) {
           finalTimestamp = aiTime;
+        }
+      }
+
+      // Lägg till gasnivå om användaren valt (endast symptom)
+      if (type === 'SYMPTOM' && typeof meta?.gasLevel === 'number') {
+        const gasLevel = meta.gasLevel;
+        analysis.symptomData = {
+          ...(analysis.symptomData || { type: 'Gas', intensity: 5 }),
+          gasLevel,
+        };
+        if (gasLevel > 0) {
+          const tagSet = new Set<string>(analysis.tags || []);
+          tagSet.add('gas');
+          tagSet.add(`gas_${gasLevel}`);
+          analysis.tags = Array.from(tagSet);
         }
       }
 
@@ -163,43 +175,6 @@ export default function DashboardPage() {
     router.push('/auth');
   };
 
-  const normalizeTag = (tag: string) => tag.trim().toLowerCase();
-
-  const getEntryTags = (entry: Entry): string[] => {
-    const tags = new Set<string>();
-
-    entry.analysis?.tags?.forEach((tag) => tags.add(normalizeTag(tag)));
-    entry.analysis?.ingredients?.forEach((ingredient) => {
-      if (ingredient.name) tags.add(normalizeTag(ingredient.name));
-      ingredient.triggers?.forEach((trigger) => {
-        if (trigger.name) tags.add(normalizeTag(trigger.name));
-      });
-    });
-
-    return Array.from(tags);
-  };
-
-  const allTags = useMemo(() => {
-    const tagSet = new Set<string>();
-    allEntries.forEach((entry) => {
-      getEntryTags(entry).forEach((tag) => tagSet.add(tag));
-    });
-    return Array.from(tagSet).sort();
-  }, [allEntries]);
-
-  const filteredTags = useMemo(() => {
-    const query = normalizeTag(tagQuery);
-    if (!query) return allTags;
-    return allTags.filter((tag) => tag.includes(query));
-  }, [allTags, tagQuery]);
-
-  const toggleTag = (tag: string) => {
-    setSelectedTags((prev) =>
-      prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]
-    );
-  };
-
-  const displayTag = (tag: string) => tag.charAt(0).toUpperCase() + tag.slice(1);
 
   const displayDate = selectedDate.toLocaleDateString('sv-SE', {
     weekday: 'long',
@@ -284,51 +259,7 @@ export default function DashboardPage() {
         {viewMode === 'insights' ? (
           <Insights entries={allEntries} />
         ) : viewMode === 'calendar' ? (
-          <div className="mb-6 space-y-4">
-            <TagDotCalendar
-              entries={allEntries}
-              selectedTags={selectedTags}
-              onSelectDate={handleDateSelect}
-            />
-
-            <div className="bg-gray-900 rounded-xl border border-gray-800 p-4 space-y-3">
-              <div className="text-sm text-gray-300">Filter på taggar</div>
-              <input
-                type="text"
-                value={tagQuery}
-                onChange={(e) => setTagQuery(e.target.value)}
-                placeholder="Sök ingrediens/medicin…"
-                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-100 placeholder-gray-500 focus:outline-none focus:border-gray-600"
-              />
-              <div className="flex flex-wrap gap-2">
-                {filteredTags.length === 0 ? (
-                  <span className="text-xs text-gray-500">Inga taggar matchar</span>
-                ) : (
-                  filteredTags.slice(0, 40).map((tag) => (
-                    <button
-                      key={tag}
-                      onClick={() => toggleTag(tag)}
-                      className={`px-3 py-1.5 text-xs rounded-full border transition-colors ${
-                        selectedTags.includes(tag)
-                          ? 'bg-blue-600 border-blue-500 text-white'
-                          : 'bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700'
-                      }`}
-                    >
-                      {displayTag(tag)}
-                    </button>
-                  ))
-                )}
-              </div>
-              {selectedTags.length > 0 && (
-                <button
-                  onClick={() => setSelectedTags([])}
-                  className="text-xs text-gray-400 hover:text-gray-300"
-                >
-                  Rensa filter
-                </button>
-              )}
-            </div>
-
+          <div className="mb-6">
             <Calendar
               entries={allEntries}
               onDateSelect={handleDateSelect}
