@@ -106,7 +106,7 @@ export default function TimelineView({ entries, onEdit }: TimelineViewProps) {
               {/* Entry */}
               <div className="relative flex items-start gap-4 pb-2">
                 {/* Tidspunkt-ikon */}
-                <div className={`relative z-10 w-12 h-12 rounded-full ${colorMap[type]} flex items-center justify-center shadow-lg`}>
+                <div className={`relative z-0 w-12 h-12 rounded-full ${colorMap[type]} flex items-center justify-center shadow-lg`}>
                   <Icon className="w-6 h-6 text-white" />
                 </div>
                 

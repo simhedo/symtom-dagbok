@@ -9,6 +9,7 @@ import ActionBar from '@/components/ActionBar';
 import EntryModal from '@/components/EntryModal';
 import EditEntryModal from '@/components/EditEntryModal';
 import Calendar from '@/components/Calendar';
+import InfiniteCalendar from '@/components/InfiniteCalendar';
 import { CalendarDays, List, Rows3, BarChart3, LogOut, Clock } from 'lucide-react';
 import CompactEntryCard from '@/components/CompactEntryCard';
 import Insights from '@/components/Insights';
@@ -186,7 +187,7 @@ export default function DashboardPage() {
   return (
     <div className="min-h-screen bg-gray-950 pb-32">
       {/* Header */}
-      <div className="bg-gray-900 border-b border-gray-800 p-4 sticky top-0 z-10">
+      <div className="bg-gray-900 border-b border-gray-800 p-4 sticky top-0 z-30">
         <div className="max-w-2xl mx-auto">
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-3">
@@ -259,8 +260,8 @@ export default function DashboardPage() {
         {viewMode === 'insights' ? (
           <Insights entries={allEntries} />
         ) : viewMode === 'calendar' ? (
-          <div className="mb-6">
-            <Calendar
+          <div className="mb-6 space-y-4">
+            <InfiniteCalendar
               entries={allEntries}
               onDateSelect={handleDateSelect}
               selectedDate={selectedDate}
