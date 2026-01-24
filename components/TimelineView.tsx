@@ -203,7 +203,7 @@ export default function TimelineView({ entries, onEdit }: TimelineViewProps) {
                 <div className="relative flex items-center gap-4 py-2">
                   <div className="w-12 flex justify-center">
                     <div className="text-xs text-gray-500 bg-gray-900 px-2 py-1 rounded border border-gray-800">
-                      ↓ {formatTimeDiff(timeDiff)}
+                      ↑ {formatTimeDiff(timeDiff)}
                     </div>
                   </div>
                 </div>
