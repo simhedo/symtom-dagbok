@@ -22,7 +22,28 @@ export async function POST(req: NextRequest) {
 
     const { text, type }: { text: string; type: EntryType } = await req.json();
 
-    const systemPrompt = `Du är en expert på maghälsa och matanalys. Analysera användarens text och returnera ENDAST valid JSON.
+    // Skicka exakt servertid till AI:n för att undvika hallucinationer
+    const now = new Date();
+    const serverTime = now.toISOString();
+    const serverHour = now.getHours();
+    const serverDate = now.toISOString().split('T')[0];
+
+    const systemPrompt = `Du är en expert på maghälsa och IBS. Analysera användarens text och returnera ENDAST valid JSON.
+
+KRITISKT - TIDSSTÄMPEL:
+Serverns exakta tid är: ${serverTime}
+Dagens datum är: ${serverDate}
+Klockan är: ${serverHour}:${String(now.getMinutes()).padStart(2, '0')}
+
+TIDSREGLER (använd ALLTID dagens datum ${serverDate} som bas):
+- "nu", "nyss", "just" = ${serverTime}
+- "för X timmar sen" = räkna bakåt från ${serverTime}
+- "frukost" = ${serverDate}T08:00:00Z
+- "lunch" = ${serverDate}T12:00:00Z  
+- "middag" = ${serverDate}T18:00:00Z
+- "kväll" = ${serverDate}T20:00:00Z
+- "igår" = byt datum till gårdagens, behåll tid
+- RETURNERA ALLTID relativeTime-fält ("nu", "-1h", "-3h", "frukost", "igår lunch")
 
 KONTEXT: Användaren registrerar ${
   type === 'FOOD' ? 'mat de har ätit' : 
@@ -32,117 +53,137 @@ KONTEXT: Användaren registrerar ${
   'sitt allmänna mående/känslor'
 }.
 
-TIDSSTÄMPEL-REGLER:
-- "frukost" = 08:00 samma dag
-- "lunch" = 12:00 samma dag  
-- "middag" = 18:00 samma dag
-- "kvällen"/"kväll" = 20:00 samma dag
-- "igår" = samma tid föregående dag
-- "idag" eller ingen tid = nuvarande tid
-
 ${type === 'FOOD' ? `
-MAT-ANALYS:
-1. Bryt ner alla ingredienser/livsmedel som nämns
-2. För varje ingrediens, identifiera ALLA relevanta triggers:
-   - Laktos (mjölkprodukter: mjölk, ost, grädde, yoghurt, smör)
-   - Gluten (vete, råg, korn, pasta, bröd, pizza)
-   - FODMAP (lök, vitlök, bönor, linser, äpple, päron, honung, cashew)
-   - Socker (godis, läsk, juice, sötsaker, kex)
-   - Fett (friterat, fet mat, ost, nötter, avokado)
-   - Fiber (fullkorn, bönor, grönsaker, frukt, havre)
-   - Kryddor (stark mat, chili, peppar, curry)
-   - Koffein (kaffe, te, läsk, energidryck)
-   - Alkohol (vin, öl, sprit)
-3. Uppskatta mängd om möjligt
-4. VIKTIGT: Uppskatta total fibermängd i gram (fiberEstimateGrams). Referens:
-   - Grönsaker: ~2-4g/100g
-   - Frukt: ~2-3g/st
-   - Fullkornsbröd: ~6-8g/skiva
-   - Havregryn: ~10g/dl
-   - Bönor/linser: ~15g/dl
-   - Vitt bröd/pasta: ~1-2g/portion
-5. Ge insiktsfull sammanfattning om potentiella risker
-6. Skapa tags (lowercase, utan dubbletter) med ingredienser + triggers
+MAT-ANALYS - VIKTIGT: Bryt ner till FAKTISKA INGREDIENSER, inte produktnamn!
+
+REGLER:
+1. "Pizza" → vetemjöl, ost, tomatsås, olivolja, ev. salami/skinka
+2. "Chips" → potatis, rapsolja/solrosolja, salt
+3. "Godis" → socker, glukossirap, gelatin, färgämnen
+4. "Läsk" → socker/sötningsmedel, kolsyra, koffein (cola)
+5. VARJE ingrediens ska ha triggers från denna lista:
+   - Gluten (vete, råg, korn, dinkel)
+   - Laktos (mjölk, ost, grädde, yoghurt, smör, glass)
+   - FODMAP (lök, vitlök, äpple, päron, mango, vattenmelon, honung, cashew, pistage, bönor, linser, vete)
+   - Fett (olja, smör, grädde, ost, nötter, avokado, friterat - saktar matsmältning)
+   - Socker (socker, sirap, honung, juice, läsk, godis)
+   - Sötningsmedel (sorbitol, xylitol, aspartam - i "sockerfritt")
+   - Fiber-olöslig (vetekli, fullkornsbröd, grönsaker med skal)
+   - Fiber-löslig (havre, äpple utan skal, citrusfrukter, bönor)
+   - Koffein (kaffe, te, cola, energidryck)
+   - Alkohol (öl, vin, sprit)
+   - Kryddor (chili, peppar, curry, vitlök)
+
+FIBER-ANALYS:
+- fiberEstimateGrams: uppskatta totalt i gram
+- fiberType: "low" (<5g), "medium" (5-15g), "high" (>15g)
+- fiberSoluble: true om mestadels löslig (havre, frukt), false om olöslig (vetekli, grönsaker)
 
 EXEMPEL:
-Input: "Åt havregrynsgröt med banan till frukost"
+Input: "Åt pizza och cola till lunch"
 Output: {
   "type": "FOOD",
-  "timestamp": "2026-01-22T08:00:00Z",
+  "timestamp": "${serverDate}T12:00:00Z",
+  "relativeTime": "lunch",
   "ingredients": [
-    {"name": "Havregryn", "amount": "1 dl", "triggers": [{"name": "Fiber"}, {"name": "Gluten"}]},
-    {"name": "Mjölk", "amount": "~150ml", "triggers": [{"name": "Laktos"}]},
-    {"name": "Banan", "amount": "1 st", "triggers": [{"name": "Fiber"}, {"name": "FODMAP"}]}
+    {"name": "Vetemjöl", "amount": "~100g", "triggers": [{"name": "Gluten"}, {"name": "FODMAP"}]},
+    {"name": "Ost", "amount": "~80g", "triggers": [{"name": "Laktos"}, {"name": "Fett"}]},
+    {"name": "Tomatsås", "amount": "~50g", "triggers": []},
+    {"name": "Olivolja", "amount": "~15ml", "triggers": [{"name": "Fett"}]},
+    {"name": "Cola", "amount": "~330ml", "triggers": [{"name": "Socker"}, {"name": "Koffein"}]}
   ],
-  "tags": ["havregryn", "mjölk", "banan", "fiber", "gluten", "laktos", "fodmap"],
-  "fiberEstimateGrams": 13,
-  "summary": "Bra fiberrik frukost (~13g fiber). Havre innehåller spår av gluten. Mogen banan kan ge FODMAP-reaktion hos känsliga."
+  "tags": ["gluten", "laktos", "fodmap", "fett", "socker", "koffein"],
+  "fiberEstimateGrams": 3,
+  "fiberType": "low",
+  "fiberSoluble": false,
+  "summary": "Tung måltid: gluten+laktos+fett. Cola ger extra socker och koffein. Låg fiber."
 }
 ` : type === 'SYMPTOM' ? `
-SYMTOM-ANALYS:
-1. Typ: Gas (uppblåsthet, rapningar, flatulens) | Smärta (kramper, ont i magen) | Avföring (diarré, förstoppning, bajsat, toalett, lös mage) | Annan
-2. Intensitet: 1-10 baserat på ordval:
-   - "lite", "lätt", "något" = 2-3
-   - "ganska", "rätt", "jobbigt" = 5-6
-   - "mycket", "jätte", "väldigt" = 7-8
-   - "extremt", "outhärdligt" = 9-10
-   - Om inget anges, uppskatta 5
-3. Beskriv symtomet tydligt
+SYMPTOM-ANALYS - Konvertera ALLTID text till mätvärden!
+
+OBLIGATORISKA FÄLT:
+1. type: Gas | Smärta | Avföring | Annan
+2. intensity: 1-10 (baserat på ordval nedan)
+3. description: kort beskrivning
+
+INTENSITETSSKALA (tolka från texten):
+- "lite", "lätt", "något", "lindrigt" = 2-3
+- "ganska", "rätt", "jobbigt", "besvärligt" = 5-6  
+- "mycket", "jätte", "väldigt", "kraftigt" = 7-8
+- "extremt", "outhärdligt", "värsta" = 9-10
+- Ingen indikation = 5
+
+AVFÖRING - Extrahera alltid:
+- bristol: 1-7 (Bristol Stool Scale)
+  1-2 = hård, förstoppad ("hård", "får inte ut", "svårt")
+  3-4 = normal, formad
+  5-6 = lös, mosig ("lös", "diarré", "rinner")
+  7 = vattnig ("bara vatten", "helt flytande")
+- smell: "normal" | "illaluktande" | "sur" (om nämnt)
+- mucus: true/false (om slem nämns)
+
+GAS - Använd gasLevel:
+- 0 = ingen
+- 1 = lite ("några")
+- 2 = måttligt ("ganska gasig")
+- 3 = mycket ("extremt gasig", "konstant")
 
 EXEMPEL:
-Input: "Känner mig svullen och ont i magen, ganska jobbigt"
+Input: "Bajsat, ganska lös och illaluktande. Lite gasig också"
 Output: {
   "type": "SYMPTOM",
-  "timestamp": "2026-01-22T14:30:00Z",
+  "timestamp": "${serverTime}",
+  "relativeTime": "nu",
   "symptomData": {
-    "type": "Smärta",
-    "intensity": 6,
-    "description": "Uppblåsthet kombinerat med magsmärta"
+    "type": "Avföring",
+    "intensity": 5,
+    "bristol": 5,
+    "smell": "illaluktande",
+    "mucus": false,
+    "gasLevel": 1,
+    "description": "Lös avföring med dålig lukt, lätt gasig"
   },
-  "tags": ["Uppblåsthet", "Kramper"],
-  "summary": "Måttliga till kraftiga besvär med uppblåsthet och smärta, kan vara reaktion på nyligen intagen mat."
+  "tags": ["avföring", "lös mage", "gas", "illaluktande"],
+  "summary": "Bristol 5 (lös). Illaluktande kan tyda på malabsorption eller bakteriell obalans."
 }
 ` : type === 'EXERCISE' ? `
 TRÄNINGS-ANALYS:
-Extrahera typ av träning, intensitet och duration. Tagga med relevanta nyckelord.
+Extrahera typ, intensitet, duration. Notera att träning ofta hjälper matsmältningen.
 
-EXEMPEL:
-Input: "30 min löpning"
 Output: {
   "type": "EXERCISE",
-  "timestamp": "2026-01-22T18:00:00Z",
-  "tags": ["Löpning", "Cardio", "30min", "Måttlig intensitet"],
-  "summary": "Måttlig konditionsträning som kan påverka matsmältningen positivt."
+  "timestamp": "${serverTime}",
+  "relativeTime": "nu",
+  "tags": ["typ", "duration", "intensitet"],
+  "summary": "Kort beskrivning av träningens påverkan på magen"
 }
 ` : type === 'MEDICATION' ? `
 MEDICIN-ANALYS:
-1. Identifiera alla mediciner i texten
-2. Returnera tags med medicinnamn (lowercase, utan dubbletter)
-3. Om tider nämns, använd den mest relevanta som timestamp
+1. Identifiera ALLA mediciner
+2. Notera tid om angiven, annars använd ${serverTime}
+3. Tagga med medicinnamn (lowercase)
 
-EXEMPEL:
-Input: "0730 pantoprazol, escitalopram, multivitamin"
 Output: {
   "type": "MEDICATION",
-  "timestamp": "2026-01-22T07:30:00Z",
-  "tags": ["pantoprazol", "escitalopram", "multivitamin"],
-  "summary": "Morgonmediciner intagna." 
+  "timestamp": "${serverTime}",
+  "relativeTime": "nu",
+  "tags": ["medicinnamn1", "medicinnamn2"],
+  "summary": "Mediciner intagna"
 }
 ` : `
 MÅENDE-ANALYS:
-Identifiera känslor, stress-nivå, sömnkvalitet och andra faktorer som kan påverka maghälsan.
+Identifiera känslor, stress, sömn. Stress påverkar magen kraftigt!
 
-EXEMPEL:
-Input: "Känner mig stressad på jobbet"
 Output: {
   "type": "MOOD",
-  "timestamp": "2026-01-22T15:00:00Z",
-  "tags": ["Stress", "Jobb", "Oro"],
-  "summary": "Stress kan påverka matsmältningen negativt genom mag-tarm-kopplingen."
+  "timestamp": "${serverTime}",
+  "relativeTime": "nu", 
+  "tags": ["känsla1", "känsla2"],
+  "summary": "Hur detta kan påverka magen"
 }
 `}
 
-RETURNERA ENDAST JSON - ingen annan text!`;
+RETURNERA ENDAST VALID JSON!`;
 
     const completion = await openaiClient.chat.completions.create({
       model: 'gpt-4o-mini',
