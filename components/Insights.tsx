@@ -3,36 +3,38 @@
 import { useMemo, useState } from 'react';
 import { Entry } from '@/types';
 import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
-import TagDotCalendar from '@/components/TagDotCalendar';
+import SymptomCalendarView from '@/components/SymptomCalendarView';
+
 
 interface InsightsProps {
   entries: Entry[];
 }
 
 export default function Insights({ entries }: InsightsProps) {
+
+
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [tagQuery, setTagQuery] = useState('');
+  const [showSymptomCalendar, setShowSymptomCalendar] = useState(false);
 
   const normalizeTag = (tag: string) => tag.trim().toLowerCase();
 
   const getEntryTags = (entry: Entry): string[] => {
     const tags = new Set<string>();
-
-    entry.analysis?.tags?.forEach((tag) => tags.add(normalizeTag(tag)));
-    entry.analysis?.ingredients?.forEach((ingredient) => {
+    entry.analysis?.tags?.forEach((tag: string) => tags.add(normalizeTag(tag)));
+    entry.analysis?.ingredients?.forEach((ingredient: any) => {
       if (ingredient.name) tags.add(normalizeTag(ingredient.name));
-      ingredient.triggers?.forEach((trigger) => {
+      ingredient.triggers?.forEach((trigger: any) => {
         if (trigger.name) tags.add(normalizeTag(trigger.name));
       });
     });
-
     return Array.from(tags);
   };
 
   const allTags = useMemo(() => {
     const tagSet = new Set<string>();
-    entries.forEach((entry) => {
-      getEntryTags(entry).forEach((tag) => tagSet.add(tag));
+    (entries as Entry[]).forEach((entry: Entry) => {
+      getEntryTags(entry).forEach((tag: string) => tagSet.add(tag));
     });
     return Array.from(tagSet).sort();
   }, [entries]);
@@ -40,11 +42,11 @@ export default function Insights({ entries }: InsightsProps) {
   const filteredTags = useMemo(() => {
     const query = normalizeTag(tagQuery);
     if (!query) return allTags;
-    return allTags.filter((tag) => tag.includes(query));
+    return allTags.filter((tag: string) => tag.includes(query));
   }, [allTags, tagQuery]);
 
   const toggleTag = (tag: string) => {
-    setSelectedTags((prev) =>
+    setSelectedTags((prev: string[]) =>
       prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]
     );
   };
@@ -73,7 +75,7 @@ export default function Insights({ entries }: InsightsProps) {
     
     const weeklyData: { [key: string]: { symptoms: number[], exercises: number } } = {};
     
-    entries.forEach(entry => {
+    (entries as Entry[]).forEach((entry: Entry) => {
       const entryDate = new Date(entry.createdAt);
       if (entryDate >= fourWeeksAgo) {
         const weekKey = getWeekNumber(entryDate);
@@ -102,7 +104,7 @@ export default function Insights({ entries }: InsightsProps) {
     
     const dailyData: { [key: string]: number[] } = {};
     
-    entries.forEach(entry => {
+    (entries as Entry[]).forEach((entry: Entry) => {
       const entryDate = new Date(entry.createdAt);
       if (entryDate >= thirtyDaysAgo && entry.analysis?.type === 'SYMPTOM' && entry.analysis.symptomData?.intensity) {
         const dateKey = getDateKey(entryDate);
@@ -130,7 +132,7 @@ export default function Insights({ entries }: InsightsProps) {
     const highSymptomDays = new Set<string>();
     const lowSymptomDays = new Set<string>();
     
-    entries.forEach(entry => {
+    (entries as Entry[]).forEach((entry: Entry) => {
       const entryDate = new Date(entry.createdAt);
       if (entryDate >= thirtyDaysAgo && entry.analysis?.type === 'SYMPTOM') {
         const intensity = entry.analysis.symptomData?.intensity || 0;
@@ -147,15 +149,15 @@ export default function Insights({ entries }: InsightsProps) {
     // Count trigger occurrences on high vs low symptom days
     const triggerCounts: { [key: string]: { high: number, low: number, total: number } } = {};
     
-    entries.forEach(entry => {
+    (entries as Entry[]).forEach((entry: Entry) => {
       const entryDate = new Date(entry.createdAt);
       if (entryDate >= thirtyDaysAgo && entry.analysis?.type === 'FOOD' && entry.analysis.ingredients) {
         const dateKey = getDateKey(entryDate);
         const isHighDay = highSymptomDays.has(dateKey);
         const isLowDay = lowSymptomDays.has(dateKey);
         
-        entry.analysis.ingredients.forEach(ing => {
-          ing.triggers?.forEach(trigger => {
+        entry.analysis.ingredients.forEach((ing: any) => {
+          ing.triggers?.forEach((trigger: any) => {
             if (!triggerCounts[trigger.name]) {
               triggerCounts[trigger.name] = { high: 0, low: 0, total: 0 };
             }
@@ -196,60 +198,24 @@ export default function Insights({ entries }: InsightsProps) {
   const maxSymptom = Math.max(...weeklySymptomAvgs, 10);
   const maxDaily = Math.max(...dailyAverages.map(d => d.avg), 10);
 
+
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="bg-gray-900 rounded-xl border border-gray-800 p-6">
         <h2 className="text-2xl font-bold mb-2">📊 Insikter & Analys</h2>
         <p className="text-sm text-gray-400">Långsiktiga mönster senaste 30 dagarna</p>
-      </div>
-
-      {/* Taggfilter & Förekomst */}
-      <div className="bg-gray-900 rounded-xl border border-gray-800 p-6 space-y-4">
-        <div className="flex items-center justify-between">
-          <h3 className="text-lg font-semibold">Taggar över tid</h3>
-          <span className="text-xs text-gray-500">Välj en tagg för att se prickar</span>
-        </div>
-
-        <TagDotCalendar entries={entries} selectedTags={selectedTags} />
-
-        <div className="space-y-3">
-          <input
-            type="text"
-            value={tagQuery}
-            onChange={(e) => setTagQuery(e.target.value)}
-            placeholder="Sök ingrediens/medicin…"
-            className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-100 placeholder-gray-500 focus:outline-none focus:border-gray-600"
-          />
-          <div className="flex flex-wrap gap-2">
-            {filteredTags.length === 0 ? (
-              <span className="text-xs text-gray-500">Inga taggar matchar</span>
-            ) : (
-              filteredTags.slice(0, 40).map((tag) => (
-                <button
-                  key={tag}
-                  onClick={() => toggleTag(tag)}
-                  className={`px-3 py-1.5 text-xs rounded-full border transition-colors ${
-                    selectedTags.includes(tag)
-                      ? 'bg-blue-600 border-blue-500 text-white'
-                      : 'bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700'
-                  }`}
-                >
-                  {displayTag(tag)}
-                </button>
-              ))
-            )}
-          </div>
-          {selectedTags.length > 0 && (
-            <button
-              onClick={() => setSelectedTags([])}
-              className="text-xs text-gray-400 hover:text-gray-300"
-            >
-              Rensa filter
-            </button>
-          )}
+        <div className="mt-4 flex gap-2">
+          <button
+            className={`px-4 py-2 rounded-lg text-sm font-medium border transition-colors ${showSymptomCalendar ? 'bg-blue-600 border-blue-500 text-white' : 'bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700'}`}
+            onClick={() => setShowSymptomCalendar((v) => !v)}
+          >
+            {showSymptomCalendar ? 'Tillbaka till insikter' : 'Symtomkalender'}
+          </button>
         </div>
       </div>
+
+      <SymptomCalendarView entries={entries} />
 
       {/* Trend Summary */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
