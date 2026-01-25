@@ -14,11 +14,16 @@ export default function PlansCard() {
     const fetchPlans = async () => {
       setLoading(true);
       try {
-        const token = localStorage.getItem('auth_token') || "";
-        const res = await fetch('/api/plans', { headers: { Authorization: `Bearer ${token}` } });
+        const token = localStorage.getItem('gut_tracker_token') || "";
+        const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
+        const res = await fetch('/api/plans', { headers });
         const data = await res.json();
-        if (!res.ok) throw new Error(data.error || 'Kunde inte hämta planer');
-        setPlans(data);
+        if (!res.ok) {
+          console.error('Plans fetch error:', data.error || res.statusText);
+          setPlans([]);
+          return;
+        }
+        setPlans(Array.isArray(data) ? data : []);
       } catch (e) {
         console.error(e);
       } finally {
@@ -30,10 +35,12 @@ export default function PlansCard() {
 
   const toggleHabit = async (planId: number, habitId: number, done: boolean) => {
     try {
-      const token = localStorage.getItem('auth_token') || "";
+      const token = localStorage.getItem('gut_tracker_token') || "";
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (token) headers.Authorization = `Bearer ${token}`;
       await fetch('/api/adherence', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        headers,
         body: JSON.stringify({ planId, habitId, date: today, done })
       });
     } catch (e) {

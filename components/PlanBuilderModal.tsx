@@ -36,10 +36,10 @@ export default function PlanBuilderModal({ isOpen, onClose, onCreated }: PlanBui
     if (!title.trim()) return;
     setLoading(true);
     try {
-      const token = localStorage.getItem('auth_token') || ""; // assumes JWT stored
+      const token = localStorage.getItem('gut_tracker_token') || ""; // JWT stored by saveUser
       const res = await fetch('/api/plans', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
         body: JSON.stringify({ title, description, startDate, endDate: endDate || null, habits })
       });
       const data = await res.json();
