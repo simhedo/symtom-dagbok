@@ -9,7 +9,7 @@ interface TimelineViewProps {
   onEdit?: (entry: Entry) => void;
 }
 
-const iconMap = {
+const iconMap: Record<string, typeof UtensilsCrossed> = {
   FOOD: UtensilsCrossed,
   SYMPTOM: AlertCircle,
   EXERCISE: Activity,
@@ -17,7 +17,7 @@ const iconMap = {
   MEDICATION: Pill,
 };
 
-const colorMap = {
+const colorMap: Record<string, string> = {
   FOOD: 'bg-gray-600',
   SYMPTOM: 'bg-gray-600',
   EXERCISE: 'bg-gray-600',
@@ -25,7 +25,7 @@ const colorMap = {
   MEDICATION: 'bg-gray-600',
 };
 
-const bgColorMap = {
+const bgColorMap: Record<string, string> = {
   FOOD: 'bg-gray-800/50 border-gray-700',
   SYMPTOM: 'bg-gray-800/50 border-gray-700',
   EXERCISE: 'bg-gray-800/50 border-gray-700',
@@ -88,9 +88,9 @@ export default function TimelineView({ entries, onEdit }: TimelineViewProps) {
       <div className="space-y-0">
         {sortedEntries.map((entry, index) => {
           const type = entry.analysis?.type || 'FOOD';
-          const Icon = (iconMap as any)[type] || Clock;
-          const bubbleColor = (colorMap as any)[type] || 'bg-gray-600';
-          const bubbleBg = (bgColorMap as any)[type] || 'bg-gray-800/50 border-gray-700';
+          const Icon = iconMap[type] || Clock;
+          const bubbleColor = colorMap[type] || 'bg-gray-600';
+          const bubbleBg = bgColorMap[type] || 'bg-gray-800/50 border-gray-700';
           const timeDiff = index < sortedEntries.length - 1
             ? getTimeDiffMinutes(
                 new Date(entry.createdAt),

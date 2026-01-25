@@ -10,7 +10,7 @@ interface EntryCardProps {
   onDelete?: (id: string) => void;
 }
 
-const iconMap = {
+const iconMap: Record<string, typeof UtensilsCrossed> = {
   FOOD: UtensilsCrossed,
   SYMPTOM: AlertCircle,
   EXERCISE: Activity,
@@ -25,7 +25,8 @@ export default function EntryCard({ entry, onEdit, onDelete }: EntryCardProps) {
   const [showActions, setShowActions] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
 
-  const Icon = entry.analysis?.type ? iconMap[entry.analysis.type] : AlertCircle;
+  const type = entry.analysis?.type || 'FOOD';
+  const Icon = iconMap[type] || AlertCircle;
   
   const minSwipeDistance = 50;
 
