@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { X, Camera, Scan, Image as ImageIcon, Plus, Trash2, Clock } from 'lucide-react';
+import { X, Camera, Scan, Image as ImageIcon, Plus, Trash2, Clock, ChevronUp, ChevronDown } from 'lucide-react';
 import { EntryType } from '@/types';
 
 interface ScannedProduct {
@@ -48,6 +48,16 @@ export default function UniversalEntryModal({ isOpen, onClose, type, onSave, sel
 
   const config = modalConfig[type];
 
+  // Reset form och sätt tid till "nu" när modal öppnas
+  useEffect(() => {
+    if (isOpen) {
+      const now = new Date();
+      setHours(now.getHours());
+      setMinutes(now.getMinutes());
+      setTime(formatTime(now));
+    }
+  }, [isOpen]);
+
   useEffect(() => {
     if (!isOpen) {
       setText('');
@@ -55,6 +65,7 @@ export default function UniversalEntryModal({ isOpen, onClose, type, onSave, sel
       setCapturedImages([]);
       setIsScanning(false);
       setScanError('');
+      setPendingProduct(null);
       stopCamera();
     }
   }, [isOpen]);
@@ -262,7 +273,17 @@ export default function UniversalEntryModal({ isOpen, onClose, type, onSave, sel
       images: capturedImages
     };
 
-    onSave(finalText, type, selectedDate || new Date(), meta);
+    // Skapa timestamp från vald tid och datum
+    const baseDate = selectedDate || new Date();
+    const timestamp = new Date(
+      baseDate.getFullYear(),
+      baseDate.getMonth(),
+      baseDate.getDate(),
+      hours,
+      minutes
+    );
+
+    onSave(finalText, type, timestamp, meta);
     onClose();
   };
 
@@ -397,36 +418,125 @@ export default function UniversalEntryModal({ isOpen, onClose, type, onSave, sel
           )}
 
           {/* Tidshantering */}
-          <button
-            onClick={() => setShowTimePicker(!showTimePicker)}
-            className="flex items-center gap-1.5 text-gray-400 hover:text-gray-200 bg-gray-800 px-2.5 py-1 rounded-lg transition-colors"
-          >
-            <Clock className="w-4 h-4" />
-            <span className="text-sm font-mono">{time}</span>
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setShowTimePicker(!showTimePicker)}
+              className="flex items-center gap-2 text-gray-400 hover:text-gray-200 bg-gray-800 px-3 py-2 rounded-lg transition-colors border border-gray-700"
+            >
+              <Clock className="w-4 h-4" />
+              <span className="text-sm font-mono">{time}</span>
+            </button>
+            {showTimePicker && (
+              <button
+                onClick={() => {
+                  const now = new Date();
+                  setHours(now.getHours());
+                  setMinutes(now.getMinutes());
+                }}
+                className="text-xs text-blue-400 hover:text-blue-300"
+              >
+                Nu
+              </button>
+            )}
+          </div>
 
+          {/* 24h Time Picker */}
           {showTimePicker && (
-            <div>
-              {/* Tidspicker UI */}
-              <div>
-                <button onClick={() => setHours(h => (h + 1) % 24)}>+</button>
-                <span>{hours}</span>
-                <button onClick={() => setHours(h => (h - 1 + 24) % 24)}>-</button>
+            <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-4">
+              <div className="flex items-center justify-center gap-4">
+                {/* Timmar */}
+                <div className="flex flex-col items-center">
+                  <button
+                    onClick={() => setHours(h => h === 23 ? 0 : h + 1)}
+                    className="p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded transition-colors"
+                  >
+                    <ChevronUp className="w-5 h-5" />
+                  </button>
+                  <span className="text-2xl font-mono text-white w-12 text-center py-1">
+                    {String(hours).padStart(2, '0')}
+                  </span>
+                  <button
+                    onClick={() => setHours(h => h === 0 ? 23 : h - 1)}
+                    className="p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded transition-colors"
+                  >
+                    <ChevronDown className="w-5 h-5" />
+                  </button>
+                </div>
+                
+                <span className="text-2xl font-mono text-gray-500">:</span>
+                
+                {/* Minuter */}
+                <div className="flex flex-col items-center">
+                  <button
+                    onClick={() => setMinutes(m => m === 59 ? 0 : m + 1)}
+                    className="p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded transition-colors"
+                  >
+                    <ChevronUp className="w-5 h-5" />
+                  </button>
+                  <span className="text-2xl font-mono text-white w-12 text-center py-1">
+                    {String(minutes).padStart(2, '0')}
+                  </span>
+                  <button
+                    onClick={() => setMinutes(m => m === 0 ? 59 : m - 1)}
+                    className="p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded transition-colors"
+                  >
+                    <ChevronDown className="w-5 h-5" />
+                  </button>
+                </div>
+                
+                {/* Snabbval */}
+                <div className="flex flex-col gap-1 ml-4">
+                  {[5, 15, 30].map(min => (
+                    <button
+                      key={min}
+                      onClick={() => setMinutes(m => (m + min) % 60)}
+                      className="text-xs px-2 py-1 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded transition-colors"
+                    >
+                      +{min}m
+                    </button>
+                  ))}
+                </div>
               </div>
-              <div>
-                <button onClick={() => setMinutes(m => (m + 1) % 60)}>+</button>
-                <span>{minutes}</span>
-                <button onClick={() => setMinutes(m => (m - 1 + 60) % 60)}>-</button>
-              </div>
+              <button
+                onClick={() => setShowTimePicker(false)}
+                className="w-full mt-3 text-sm text-blue-400 hover:text-blue-300"
+              >
+                Klar
+              </button>
             </div>
           )}
 
           {/* Bekräftelse för skannad produkt */}
           {pendingProduct && (
-            <div>
-              <p>Hittad produkt: {pendingProduct.name} ({pendingProduct.brand})</p>
-              <button onClick={confirmProduct}>Bekräfta</button>
-              <button onClick={() => setPendingProduct(null)}>Avbryt</button>
+            <div className="bg-green-900/20 border border-green-700 rounded-lg p-4">
+              <p className="text-sm text-green-300 mb-2">Hittad produkt:</p>
+              <div className="flex items-start gap-3 mb-3">
+                {pendingProduct.imageUrl && (
+                  <img src={pendingProduct.imageUrl} alt={pendingProduct.name} className="w-12 h-12 object-cover rounded" />
+                )}
+                <div>
+                  <div className="font-medium text-white">
+                    {pendingProduct.brand && `${pendingProduct.brand} - `}{pendingProduct.name}
+                  </div>
+                  {pendingProduct.ingredients && (
+                    <div className="text-xs text-gray-400 mt-1 line-clamp-2">{pendingProduct.ingredients}</div>
+                  )}
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <button 
+                  onClick={confirmProduct}
+                  className="flex-1 bg-green-600 hover:bg-green-500 text-white py-2 rounded-lg text-sm font-medium transition-colors"
+                >
+                  Lägg till
+                </button>
+                <button 
+                  onClick={() => setPendingProduct(null)}
+                  className="px-4 bg-gray-700 hover:bg-gray-600 text-gray-200 py-2 rounded-lg text-sm transition-colors"
+                >
+                  Avbryt
+                </button>
+              </div>
             </div>
           )}
 
