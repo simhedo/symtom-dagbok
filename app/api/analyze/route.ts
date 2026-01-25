@@ -54,25 +54,32 @@ KONTEXT: Användaren registrerar ${
 }.
 
 ${type === 'FOOD' ? `
-MAT-ANALYS - VIKTIGT: Bryt ner till FAKTISKA INGREDIENSER, inte produktnamn!
+MAT-ANALYS - DJUP NEDBRYTNING TILL INGREDIENSER & TRIGGERS!
 
-REGLER:
-1. "Pizza" → vetemjöl, ost, tomatsås, olivolja, ev. salami/skinka
-2. "Chips" → potatis, rapsolja/solrosolja, salt
-3. "Godis" → socker, glukossirap, gelatin, färgämnen
-4. "Läsk" → socker/sötningsmedel, kolsyra, koffein (cola)
-5. VARJE ingrediens ska ha triggers från denna lista:
-   - Gluten (vete, råg, korn, dinkel)
-   - Laktos (mjölk, ost, grädde, yoghurt, smör, glass)
-   - FODMAP (lök, vitlök, äpple, päron, mango, vattenmelon, honung, cashew, pistage, bönor, linser, vete)
-   - Fett (olja, smör, grädde, ost, nötter, avokado, friterat - saktar matsmältning)
-   - Socker (socker, sirap, honung, juice, läsk, godis)
-   - Sötningsmedel (sorbitol, xylitol, aspartam - i "sockerfritt")
-   - Fiber-olöslig (vetekli, fullkornsbröd, grönsaker med skal)
-   - Fiber-löslig (havre, äpple utan skal, citrusfrukter, bönor)
-   - Koffein (kaffe, te, cola, energidryck)
-   - Alkohol (öl, vin, sprit)
-   - Kryddor (chili, peppar, curry, vitlök)
+KRITISKA REGLER:
+1. ALDRIG produktnamn som ingrediens - bryt ner till komponenter!
+   ✗ "Cloetta Twist" ✓ "Socker, glukossirap, gelatin, färgämne"
+   ✗ "Pizza" ✓ "Vetemjöl, ost, tomatsås, olivolja, salami"
+   
+2. SKANNADE PRODUKTER: Om texten innehåller "Ingredienser: ...", extrahera VARJE ingrediens därifrån
+
+3. TRIGGERS - KOMPLETT LISTA (lägg till ALLA som matchar):
+   - Gluten: vete, vetemjöl, råg, korn, dinkel, pasta, bröd, pizza
+   - Laktos: mjölk, ost, grädde, yoghurt, smör, glass, filmjölk, kvarg
+   - FODMAP-lök/vitlök: lök, vitlök, schalottenlök, purjolök, löksalt
+   - FODMAP-frukt: äpple, päron, mango, vattenmelon, persika, plommon
+   - FODMAP-socker: honung, agavesirap, fruktossirap
+   - FODMAP-leguminos: bönor, linser, kikärter, sojabönor
+   - FODMAP-nötter: cashew, pistagenötter
+   - Fett: olja, smör, grädde, ost, nötter, avokado, friterat, bacon
+   - Socker: socker, glukossirap, fruktossirap, honung, saft, läsk
+   - Sötningsmedel: sorbitol, xylitol, manitol, aspartam, sukralos (i "sockerfritt")
+   - Fiber-olöslig: vetekli, fullkorn, grönsaker med skal, rå morötter
+   - Fiber-löslig: havre, havregryn, äpple utan skal, apelsin, bönor
+   - Koffein: kaffe, espresso, te, cola, energidryck, choklad
+   - Alkohol: öl, vin, sprit, cider
+   - Kryddor/stark: chili, cayennepeppar, curry, peppar, tabasco
+   - Syra: citron, tomat, ättika, äppelcider
 
 FIBER-ANALYS:
 - fiberEstimateGrams: uppskatta totalt i gram
