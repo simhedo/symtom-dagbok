@@ -7,6 +7,8 @@ import { Entry, EntryType, User } from '@/types';
 import EntryCard from '@/components/EntryCard';
 import ActionBar from '@/components/ActionBar';
 import EntryModal from '@/components/EntryModal';
+import PlansCard from '@/components/PlansCard';
+import PlanBuilderModal from '@/components/PlanBuilderModal';
 import EditEntryModal from '@/components/EditEntryModal';
 import Calendar from '@/components/Calendar';
 import InfiniteCalendar from '@/components/InfiniteCalendar';
@@ -27,6 +29,7 @@ export default function DashboardPage() {
   const [selectedType, setSelectedType] = useState<EntryType>('FOOD');
   const [viewMode, setViewMode] = useState<ViewMode>('timeline');
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const [planModalOpen, setPlanModalOpen] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -202,6 +205,13 @@ export default function DashboardPage() {
               >
                 <LogOut className="w-5 h-5" />
               </button>
+              <button
+                onClick={() => setPlanModalOpen(true)}
+                className="px-3 py-2 text-sm bg-blue-600 hover:bg-blue-500 text-white rounded-lg ml-2"
+                title="Skapa ny plan"
+              >
+                Ny plan
+              </button>
             </div>
             
             {/* View Toggle */}
@@ -257,6 +267,10 @@ export default function DashboardPage() {
 
       {/* Content */}
       <div className="max-w-2xl mx-auto p-4">
+        {/* Plans overview */}
+        <div className="mb-6">
+          <PlansCard />
+        </div>
         {viewMode === 'insights' ? (
           <Insights entries={allEntries} />
         ) : viewMode === 'calendar' ? (
@@ -339,6 +353,17 @@ export default function DashboardPage() {
           onDelete={handleDelete}
         />
       )}
+
+      {/* Plan Builder Modal */}
+      <PlanBuilderModal
+        isOpen={planModalOpen}
+        onClose={() => setPlanModalOpen(false)}
+        onCreated={() => {
+          // refresh plans view by reloading the page section implicitly
+          // PlansCard fetches plans on mount; a simple state toggle re-mounts it
+          setPlanModalOpen(false);
+        }}
+      />
     </div>
   );
 }

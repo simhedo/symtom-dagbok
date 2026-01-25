@@ -66,9 +66,57 @@ export async function GET() {
     await sql`CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)`;
     console.log('[init-db] Indexes created');
 
+    // Create plans table (MVP for habit tracking / trials)
+    await sql`
+      CREATE TABLE IF NOT EXISTS plans (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        title VARCHAR(200) NOT NULL,
+        description TEXT,
+        start_date DATE NOT NULL,
+        end_date DATE,
+        status VARCHAR(20) DEFAULT 'active',
+        metrics JSONB,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `;
+    await sql`CREATE INDEX IF NOT EXISTS idx_plans_user_id ON plans(user_id)`;
+    await sql`CREATE INDEX IF NOT EXISTS idx_plans_status ON plans(status)`;
+    console.log('[init-db] Plans table ready');
+
+    // Create plan_habits table
+    await sql`
+      CREATE TABLE IF NOT EXISTS plan_habits (
+        id SERIAL PRIMARY KEY,
+        plan_id INTEGER NOT NULL REFERENCES plans(id) ON DELETE CASCADE,
+        name VARCHAR(200) NOT NULL,
+        notes TEXT,
+        target_per_day INTEGER DEFAULT 1,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `;
+    await sql`CREATE INDEX IF NOT EXISTS idx_plan_habits_plan_id ON plan_habits(plan_id)`;
+    console.log('[init-db] Plan habits table ready');
+
+    // Create adherence_logs table
+    await sql`
+      CREATE TABLE IF NOT EXISTS adherence_logs (
+        id SERIAL PRIMARY KEY,
+        plan_id INTEGER NOT NULL REFERENCES plans(id) ON DELETE CASCADE,
+        habit_id INTEGER NOT NULL REFERENCES plan_habits(id) ON DELETE CASCADE,
+        log_date DATE NOT NULL,
+        done BOOLEAN NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE (habit_id, log_date)
+      )
+    `;
+    await sql`CREATE INDEX IF NOT EXISTS idx_adherence_plan_id ON adherence_logs(plan_id)`;
+    await sql`CREATE INDEX IF NOT EXISTS idx_adherence_log_date ON adherence_logs(log_date)`;
+    console.log('[init-db] Adherence logs table ready');
+
     return NextResponse.json({ 
       success: true, 
-      message: 'Database initialized successfully with secure schema',
+      message: 'Database initialized successfully with secure schema + plans',
       migrated: hasOldSchema
     });
   } catch (error: any) {
