@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { X, Camera, Scan, Image as ImageIcon, Plus, Trash2 } from 'lucide-react';
+import { X, Camera, Scan, Image as ImageIcon, Plus, Trash2, Clock } from 'lucide-react';
 import { EntryType } from '@/types';
 
 interface ScannedProduct {
@@ -36,6 +36,11 @@ export default function UniversalEntryModal({ isOpen, onClose, type, onSave, sel
   const [isLoadingProduct, setIsLoadingProduct] = useState(false);
   const [scanError, setScanError] = useState('');
   const [showCamera, setShowCamera] = useState(false);
+  const [time, setTime] = useState(formatTime(new Date()));
+  const [hours, setHours] = useState(new Date().getHours());
+  const [minutes, setMinutes] = useState(new Date().getMinutes());
+  const [showTimePicker, setShowTimePicker] = useState(false);
+  const [pendingProduct, setPendingProduct] = useState<ScannedProduct | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -53,6 +58,11 @@ export default function UniversalEntryModal({ isOpen, onClose, type, onSave, sel
       stopCamera();
     }
   }, [isOpen]);
+
+  // Synka tid med state
+  useEffect(() => {
+    setTime(`${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`);
+  }, [hours, minutes]);
 
   const stopCamera = () => {
     if (streamRef.current) {
@@ -158,7 +168,7 @@ export default function UniversalEntryModal({ isOpen, onClose, type, onSave, sel
         }
       } else {
         // Fallback: Manuell inmatning av streckkod
-        const barcode = prompt('Ange streckkod manuellt (Barcode Detection API ej tillgänglig):');
+        const barcode = prompt('Ange streckod manuellt (Barcode Detection API ej tillgänglig):');
         if (barcode) {
           await fetchProductData(barcode);
         }
@@ -171,11 +181,31 @@ export default function UniversalEntryModal({ isOpen, onClose, type, onSave, sel
     }
   };
 
+  const confirmProduct = () => {
+    if (pendingProduct) {
+      setScannedProducts(prev => [...prev, pendingProduct]);
+      setText(prev => {
+        const productText = `${pendingProduct.brand ? pendingProduct.brand + ' ' : ''}${pendingProduct.name}`;
+        return prev ? `${prev}, ${productText}` : productText;
+      });
+      setPendingProduct(null);
+    }
+  };
+
+  const productCache = new Map<string, ScannedProduct>();
+
   const fetchProductData = async (barcode: string) => {
     setIsLoadingProduct(true);
     setScanError('');
 
     try {
+      // Kontrollera om produkten redan finns i cachen
+      if (productCache.has(barcode)) {
+        const cachedProduct = productCache.get(barcode)!;
+        setPendingProduct(cachedProduct);
+        return;
+      }
+
       const response = await fetch(`/api/product?barcode=${barcode}`);
       
       if (!response.ok) {
@@ -192,15 +222,14 @@ export default function UniversalEntryModal({ isOpen, onClose, type, onSave, sel
         imageUrl: productData.imageUrl
       };
 
-      setScannedProducts(prev => [...prev, product]);
-      setText(prev => {
-        const productText = `${product.brand ? product.brand + ' ' : ''}${product.name}`;
-        return prev ? `${prev}, ${productText}` : productText;
-      });
+      // Lägg till produkten i cachen
+      productCache.set(barcode, product);
+
+      setPendingProduct(product); // Visa produkt för bekräftelse
       
     } catch (err) {
-      console.error('Product fetch error:', err);
-      setScanError('Kunde inte hämta produktdata. Försök igen.');
+      console.error('Produktdatafel:', err);
+      setScanError('Kunde inte hämta produktdata');
     } finally {
       setIsLoadingProduct(false);
     }
@@ -367,6 +396,40 @@ export default function UniversalEntryModal({ isOpen, onClose, type, onSave, sel
             </div>
           )}
 
+          {/* Tidshantering */}
+          <button
+            onClick={() => setShowTimePicker(!showTimePicker)}
+            className="flex items-center gap-1.5 text-gray-400 hover:text-gray-200 bg-gray-800 px-2.5 py-1 rounded-lg transition-colors"
+          >
+            <Clock className="w-4 h-4" />
+            <span className="text-sm font-mono">{time}</span>
+          </button>
+
+          {showTimePicker && (
+            <div>
+              {/* Tidspicker UI */}
+              <div>
+                <button onClick={() => setHours(h => (h + 1) % 24)}>+</button>
+                <span>{hours}</span>
+                <button onClick={() => setHours(h => (h - 1 + 24) % 24)}>-</button>
+              </div>
+              <div>
+                <button onClick={() => setMinutes(m => (m + 1) % 60)}>+</button>
+                <span>{minutes}</span>
+                <button onClick={() => setMinutes(m => (m - 1 + 60) % 60)}>-</button>
+              </div>
+            </div>
+          )}
+
+          {/* Bekräftelse för skannad produkt */}
+          {pendingProduct && (
+            <div>
+              <p>Hittad produkt: {pendingProduct.name} ({pendingProduct.brand})</p>
+              <button onClick={confirmProduct}>Bekräfta</button>
+              <button onClick={() => setPendingProduct(null)}>Avbryt</button>
+            </div>
+          )}
+
           {/* Text input */}
           <textarea
             value={text}
@@ -388,4 +451,10 @@ export default function UniversalEntryModal({ isOpen, onClose, type, onSave, sel
       </div>
     </div>
   );
+}
+
+function formatTime(date: Date) {
+  const hours = date.getHours();
+  const minutes = date.getMinutes();
+  return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
 }
