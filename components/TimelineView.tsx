@@ -88,7 +88,9 @@ export default function TimelineView({ entries, onEdit }: TimelineViewProps) {
       <div className="space-y-0">
         {sortedEntries.map((entry, index) => {
           const type = entry.analysis?.type || 'FOOD';
-          const Icon = iconMap[type];
+          const Icon = (iconMap as any)[type] || Clock;
+          const bubbleColor = (colorMap as any)[type] || 'bg-gray-600';
+          const bubbleBg = (bgColorMap as any)[type] || 'bg-gray-800/50 border-gray-700';
           const timeDiff = index < sortedEntries.length - 1
             ? getTimeDiffMinutes(
                 new Date(entry.createdAt),
@@ -106,13 +108,13 @@ export default function TimelineView({ entries, onEdit }: TimelineViewProps) {
               {/* Entry */}
               <div className="relative flex items-start gap-4 pb-2">
                 {/* Tidspunkt-ikon */}
-                <div className={`relative z-0 w-12 h-12 rounded-full ${colorMap[type]} flex items-center justify-center shadow-lg`}>
+                <div className={`relative z-0 w-12 h-12 rounded-full ${bubbleColor} flex items-center justify-center shadow-lg`}>
                   <Icon className="w-6 h-6 text-white" />
                 </div>
                 
                 {/* Innehåll */}
                 <div 
-                  className={`flex-1 p-4 rounded-xl border ${bgColorMap[type]} cursor-pointer transition-all hover:scale-[1.01]`}
+                  className={`flex-1 p-4 rounded-xl border ${bubbleBg} cursor-pointer transition-all hover:scale-[1.01]`}
                   onClick={() => onEdit?.(entry)}
                 >
                   <div className="flex items-start justify-between gap-2">
