@@ -8,11 +8,12 @@ import EntryCard from '@/components/EntryCard';
 import ActionBar from '@/components/ActionBar';
 import EntryModal from '@/components/EntryModal';
 import PlansCard from '@/components/PlansCard';
-import PlanBuilderModal from '@/components/PlanBuilderModal';
+import SmartPlansCard from '@/components/SmartPlansCard';
+import SmartPlanModal from '@/components/SmartPlanModal';
 import EditEntryModal from '@/components/EditEntryModal';
 import Calendar from '@/components/Calendar';
 import InfiniteCalendar from '@/components/InfiniteCalendar';
-import { CalendarDays, List, Rows3, BarChart3, LogOut, Clock, MessageCircle, User as UserIcon } from 'lucide-react';
+import { CalendarDays, List, Rows3, BarChart3, LogOut, Clock, MessageCircle, User as UserIcon, Target } from 'lucide-react';
 import CompactEntryCard from '@/components/CompactEntryCard';
 import Insights from '@/components/Insights';
 import TimelineView from '@/components/TimelineView';
@@ -223,99 +224,102 @@ export default function DashboardPage() {
     <div className="min-h-screen bg-gray-950 pb-32">
       {/* Header */}
       <div className="bg-gray-900 border-b border-gray-800 p-4 sticky top-0 z-30">
-        <div className="max-w-2xl mx-auto">
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center gap-3">
-              <div>
-                <h1 className="text-sm text-gray-400">Hej {user?.name}! 👋</h1>
-                <h2 className="text-xl font-semibold capitalize">{displayDate}</h2>
-              </div>
-              <button
-                onClick={handleLogout}
-                className="p-2 text-gray-400 hover:text-red-400 transition-colors"
-                title="Logga ut"
-              >
-                <LogOut className="w-5 h-5" />
-              </button>
+        <div className="max-w-2xl mx-auto px-4">
+          {/* Top row: greeting + actions */}
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <h1 className="text-sm text-gray-400">Hej {user?.name}!</h1>
+              <h2 className="text-lg sm:text-xl font-semibold capitalize">{displayDate}</h2>
+            </div>
+            
+            {/* Action buttons */}
+            <div className="flex items-center gap-1">
               <button
                 onClick={() => setChatModalOpen(true)}
-                className="p-2 text-gray-400 hover:text-green-400 transition-colors"
-                title="AI Rådgivare"
+                className="p-2 text-gray-400 hover:text-green-400 hover:bg-gray-800 rounded-lg transition-colors"
+                title="AI Radgivare"
               >
                 <MessageCircle className="w-5 h-5" />
               </button>
               <button
                 onClick={() => setProfileModalOpen(true)}
-                className="p-2 text-gray-400 hover:text-blue-400 transition-colors"
+                className="p-2 text-gray-400 hover:text-blue-400 hover:bg-gray-800 rounded-lg transition-colors"
                 title="Min Profil"
               >
                 <UserIcon className="w-5 h-5" />
               </button>
               <button
                 onClick={() => setPlanModalOpen(true)}
-                className="px-3 py-2 text-sm bg-blue-600 hover:bg-blue-500 text-white rounded-lg ml-2"
-                title="Skapa ny plan"
+                className="p-2 text-gray-400 hover:text-purple-400 hover:bg-gray-800 rounded-lg transition-colors"
+                title="Planer"
               >
-                Ny plan
+                <Target className="w-5 h-5" />
+              </button>
+              <button
+                onClick={handleLogout}
+                className="p-2 text-gray-400 hover:text-red-400 hover:bg-gray-800 rounded-lg transition-colors"
+                title="Logga ut"
+              >
+                <LogOut className="w-5 h-5" />
               </button>
             </div>
-            
-            {/* View Toggle */}
-            <div className="flex gap-1 bg-gray-800 p-1 rounded-lg">
-              <button
-                onClick={() => setViewMode('timeline')}
-                className={`p-2 rounded transition-colors ${
-                  viewMode === 'timeline'
-                    ? 'bg-gray-700 text-white'
-                    : 'text-gray-400 hover:text-gray-200'
-                }`}
-                title="Tidslinje"
-              >
-                <Clock className="w-5 h-5" />
-              </button>
-              <button
-                onClick={() => setViewMode('list')}
-                className={`p-2 rounded transition-colors ${
-                  viewMode === 'list'
-                    ? 'bg-gray-700 text-white'
-                    : 'text-gray-400 hover:text-gray-200'
-                }`}
-                title="Lista"
-              >
-                <List className="w-5 h-5" />
-              </button>
-              <button
-                onClick={() => setViewMode('calendar')}
-                className={`p-2 rounded transition-colors ${
-                  viewMode === 'calendar'
-                    ? 'bg-gray-700 text-white'
-                    : 'text-gray-400 hover:text-gray-200'
-                }`}
-                title="Kalender"
-              >
-                <CalendarDays className="w-5 h-5" />
-              </button>
-              <button
-                onClick={() => setViewMode('insights')}
-                className={`p-2 rounded transition-colors ${
-                  viewMode === 'insights'
-                    ? 'bg-gray-700 text-white'
-                    : 'text-gray-400 hover:text-gray-200'
-                }`}
-                title="Insikter"
-              >
-                <BarChart3 className="w-5 h-5" />
-              </button>
-            </div>
+          </div>
+          
+          {/* View Toggle */}
+          <div className="flex gap-1 bg-gray-800 p-1 rounded-lg w-fit">
+            <button
+              onClick={() => setViewMode('timeline')}
+              className={`p-2 rounded transition-colors ${
+                viewMode === 'timeline'
+                  ? 'bg-gray-700 text-white'
+                  : 'text-gray-400 hover:text-gray-200'
+              }`}
+              title="Tidslinje"
+            >
+              <Clock className="w-5 h-5" />
+            </button>
+            <button
+              onClick={() => setViewMode('list')}
+              className={`p-2 rounded transition-colors ${
+                viewMode === 'list'
+                  ? 'bg-gray-700 text-white'
+                  : 'text-gray-400 hover:text-gray-200'
+              }`}
+              title="Lista"
+            >
+              <List className="w-5 h-5" />
+            </button>
+            <button
+              onClick={() => setViewMode('calendar')}
+              className={`p-2 rounded transition-colors ${
+                viewMode === 'calendar'
+                  ? 'bg-gray-700 text-white'
+                  : 'text-gray-400 hover:text-gray-200'
+              }`}
+              title="Kalender"
+            >
+              <CalendarDays className="w-5 h-5" />
+            </button>
+            <button
+              onClick={() => setViewMode('insights')}
+              className={`p-2 rounded transition-colors ${
+                viewMode === 'insights'
+                  ? 'bg-gray-700 text-white'
+                  : 'text-gray-400 hover:text-gray-200'
+              }`}
+              title="Insikter"
+            >
+              <BarChart3 className="w-5 h-5" />
+            </button>
           </div>
         </div>
       </div>
 
       {/* Content */}
       <div className="max-w-2xl mx-auto p-4">
-        {/* Plans overview */}
-        <div className="mb-6">
-          <PlansCard />
+        {/* Smart Plans with auto-tracking */}
+        <div className="mb-4">
+          <SmartPlansCard entries={allEntries} />
         </div>
         {viewMode === 'insights' ? (
           <Insights entries={allEntries} />
@@ -400,14 +404,13 @@ export default function DashboardPage() {
         />
       )}
 
-      {/* Plan Builder Modal */}
-      <PlanBuilderModal
+      {/* Smart Plan Modal */}
+      <SmartPlanModal
         isOpen={planModalOpen}
         onClose={() => setPlanModalOpen(false)}
         onCreated={() => {
-          // refresh plans view by reloading the page section implicitly
-          // PlansCard fetches plans on mount; a simple state toggle re-mounts it
           setPlanModalOpen(false);
+          loadEntries(); // Reload to trigger adherence check
         }}
       />
 

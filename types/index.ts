@@ -159,3 +159,33 @@ export interface ChatMessage {
   content: string;
   timestamp: string;
 }
+
+// Plan Rules - för smart habit tracking
+export interface PlanRule {
+  id: string;
+  type: 'avoid_category' | 'avoid_ingredient' | 'avoid_trigger' | 'max_amount' | 'require_action';
+  // avoid_category: undvik produktkategorier som "godis", "kakor", "snacks"
+  // avoid_ingredient: undvik specifika ingredienser
+  // avoid_trigger: undvik specifika triggers (gluten, laktos, etc)
+  // max_amount: max mängd av något (fett, socker, etc)
+  // require_action: kräv en handling (ta medicin, träna, etc)
+  
+  target: string; // vad regeln gäller för (kategori, ingrediens, trigger, etc)
+  value?: number; // för max_amount regler (t.ex. max 15g fett)
+  unit?: string; // gram, mg, etc
+  description: string; // beskrivning av regeln
+}
+
+export interface PlanAdherence {
+  date: string; // YYYY-MM-DD
+  passed: boolean;
+  violations: PlanViolation[];
+  checkedAt: string;
+}
+
+export interface PlanViolation {
+  ruleId: string;
+  entryId: string;
+  entryText: string;
+  reason: string; // "Innehöll chips (snacks)" eller "Fett: 25g (max 15g)"
+}
