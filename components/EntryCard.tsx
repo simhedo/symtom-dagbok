@@ -10,9 +10,15 @@ interface EntryCardProps {
   onDelete?: (id: string) => void;
 }
 
-const iconMap: Record<string, typeof UtensilsCrossed> = {
+// Toalett-ikon komponent
+const ToiletIcon = ({ className }: { className?: string }) => (
+  <span className={className} style={{ fontSize: '1.25rem', lineHeight: 1 }}>🚽</span>
+);
+
+const iconMap: Record<string, typeof UtensilsCrossed | typeof ToiletIcon> = {
   FOOD: UtensilsCrossed,
   SYMPTOM: AlertCircle,
+  BATHROOM: ToiletIcon,
   EXERCISE: Activity,
   MOOD: Brain,
   MEDICATION: Pill,
@@ -150,12 +156,47 @@ export default function EntryCard({ entry, onEdit, onDelete }: EntryCardProps) {
                 {entry.analysis.symptomData && (
                   <div className="flex gap-2 items-center">
                     <span className="px-2 py-1 bg-orange-900/30 text-orange-300 text-xs rounded-full border border-orange-800">
-                      {entry.analysis.symptomData.type}
+                      {entry.analysis.symptomData.primaryType || entry.analysis.symptomData.type}
                     </span>
                     <span className="px-2 py-1 bg-yellow-900/30 text-yellow-300 text-xs rounded-full border border-yellow-800">
                       Intensitet: {entry.analysis.symptomData.intensity}/10
                     </span>
                   </div>
+                )}
+                
+                {/* Bathroom/Bristol data */}
+                {entry.analysis.bathroomData && (
+                  <div className="flex gap-2 items-center flex-wrap">
+                    <span className="px-2 py-1 bg-amber-900/30 text-amber-300 text-xs rounded-full border border-amber-800">
+                      Bristol {entry.analysis.bathroomData.bristol}
+                    </span>
+                    {entry.analysis.bathroomData.bristolCategory && (
+                      <span className="px-2 py-1 bg-amber-900/20 text-amber-200 text-xs rounded-full border border-amber-700">
+                        {entry.analysis.bathroomData.bristolCategory}
+                      </span>
+                    )}
+                    {entry.analysis.bathroomData.urgency && entry.analysis.bathroomData.urgency !== 'normal' && (
+                      <span className="px-2 py-1 bg-red-900/30 text-red-300 text-xs rounded-full border border-red-800">
+                        {entry.analysis.bathroomData.urgency}
+                      </span>
+                    )}
+                  </div>
+                )}
+                
+                {/* Stacking Warning */}
+                {entry.analysis.stackingWarning && (
+                  <div className="p-2 bg-red-900/20 border border-red-800 rounded-lg">
+                    <p className="text-xs text-red-300">
+                      ⚠️ {entry.analysis.stackingWarning.message}
+                    </p>
+                  </div>
+                )}
+                
+                {/* Clinical Insight */}
+                {entry.analysis.clinicalInsight && (
+                  <p className="text-xs text-purple-300 italic">
+                    🧠 {entry.analysis.clinicalInsight}
+                  </p>
                 )}
                 
                 {/* General tags */}

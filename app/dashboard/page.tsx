@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { getUser, getTodayEntries, getEntries, saveEntry, updateEntry, deleteEntry } from '@/lib/storage';
-import { Entry, EntryType, User } from '@/types';
+import { Entry, EntryType, User, UserProfile } from '@/types';
 import EntryCard from '@/components/EntryCard';
 import ActionBar from '@/components/ActionBar';
 import EntryModal from '@/components/EntryModal';
@@ -12,10 +12,22 @@ import PlanBuilderModal from '@/components/PlanBuilderModal';
 import EditEntryModal from '@/components/EditEntryModal';
 import Calendar from '@/components/Calendar';
 import InfiniteCalendar from '@/components/InfiniteCalendar';
-import { CalendarDays, List, Rows3, BarChart3, LogOut, Clock } from 'lucide-react';
+import { CalendarDays, List, Rows3, BarChart3, LogOut, Clock, MessageCircle, User as UserIcon } from 'lucide-react';
 import CompactEntryCard from '@/components/CompactEntryCard';
 import Insights from '@/components/Insights';
 import TimelineView from '@/components/TimelineView';
+import AIChatModal from '@/components/AIChatModal';
+import ProfileModal from '@/components/ProfileModal';
+
+const DEFAULT_PROFILE: UserProfile = {
+  diagnoses: [],
+  confirmedTriggers: [],
+  safeFoods: [],
+  regularMedications: [],
+  diet: 'normal',
+  goals: [],
+  notes: '',
+};
 
 type ViewMode = 'timeline' | 'list' | 'calendar' | 'insights';
 
@@ -30,6 +42,9 @@ export default function DashboardPage() {
   const [viewMode, setViewMode] = useState<ViewMode>('timeline');
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [planModalOpen, setPlanModalOpen] = useState(false);
+  const [chatModalOpen, setChatModalOpen] = useState(false);
+  const [profileModalOpen, setProfileModalOpen] = useState(false);
+  const [userProfile, setUserProfile] = useState<UserProfile>(DEFAULT_PROFILE);
   const router = useRouter();
 
   useEffect(() => {
@@ -39,8 +54,25 @@ export default function DashboardPage() {
     } else {
       setUser(currentUser);
       loadEntries();
+      loadProfile();
     }
   }, [router]);
+
+  const loadProfile = () => {
+    const savedProfile = localStorage.getItem('gut_tracker_profile');
+    if (savedProfile) {
+      try {
+        setUserProfile(JSON.parse(savedProfile));
+      } catch (e) {
+        console.error('Failed to load profile:', e);
+      }
+    }
+  };
+
+  const saveProfile = (profile: UserProfile) => {
+    setUserProfile(profile);
+    localStorage.setItem('gut_tracker_profile', JSON.stringify(profile));
+  };
 
   const loadEntries = async () => {
     const todayEntries = await getTodayEntries();
@@ -206,6 +238,20 @@ export default function DashboardPage() {
                 <LogOut className="w-5 h-5" />
               </button>
               <button
+                onClick={() => setChatModalOpen(true)}
+                className="p-2 text-gray-400 hover:text-green-400 transition-colors"
+                title="AI Rådgivare"
+              >
+                <MessageCircle className="w-5 h-5" />
+              </button>
+              <button
+                onClick={() => setProfileModalOpen(true)}
+                className="p-2 text-gray-400 hover:text-blue-400 transition-colors"
+                title="Min Profil"
+              >
+                <UserIcon className="w-5 h-5" />
+              </button>
+              <button
                 onClick={() => setPlanModalOpen(true)}
                 className="px-3 py-2 text-sm bg-blue-600 hover:bg-blue-500 text-white rounded-lg ml-2"
                 title="Skapa ny plan"
@@ -363,6 +409,25 @@ export default function DashboardPage() {
           // PlansCard fetches plans on mount; a simple state toggle re-mounts it
           setPlanModalOpen(false);
         }}
+      />
+
+      {/* AI Chat Modal */}
+      <AIChatModal
+        isOpen={chatModalOpen}
+        onClose={() => setChatModalOpen(false)}
+        profile={userProfile}
+        onOpenProfile={() => {
+          setChatModalOpen(false);
+          setProfileModalOpen(true);
+        }}
+      />
+
+      {/* Profile Modal */}
+      <ProfileModal
+        isOpen={profileModalOpen}
+        onClose={() => setProfileModalOpen(false)}
+        profile={userProfile}
+        onSave={saveProfile}
       />
     </div>
   );

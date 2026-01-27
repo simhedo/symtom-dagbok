@@ -9,9 +9,15 @@ interface TimelineViewProps {
   onEdit?: (entry: Entry) => void;
 }
 
-const iconMap: Record<string, typeof UtensilsCrossed> = {
+// Toalett-ikon komponent
+const ToiletIcon = ({ className }: { className?: string }) => (
+  <span className={className} style={{ fontSize: '1rem', lineHeight: 1 }}>🚽</span>
+);
+
+const iconMap: Record<string, typeof UtensilsCrossed | typeof ToiletIcon> = {
   FOOD: UtensilsCrossed,
   SYMPTOM: AlertCircle,
+  BATHROOM: ToiletIcon,
   EXERCISE: Activity,
   MOOD: Brain,
   MEDICATION: Pill,
@@ -20,6 +26,7 @@ const iconMap: Record<string, typeof UtensilsCrossed> = {
 const colorMap: Record<string, string> = {
   FOOD: 'bg-gray-600',
   SYMPTOM: 'bg-gray-600',
+  BATHROOM: 'bg-amber-600',
   EXERCISE: 'bg-gray-600',
   MOOD: 'bg-gray-600',
   MEDICATION: 'bg-gray-600',
@@ -28,6 +35,7 @@ const colorMap: Record<string, string> = {
 const bgColorMap: Record<string, string> = {
   FOOD: 'bg-gray-800/50 border-gray-700',
   SYMPTOM: 'bg-gray-800/50 border-gray-700',
+  BATHROOM: 'bg-amber-900/30 border-amber-800',
   EXERCISE: 'bg-gray-800/50 border-gray-700',
   MOOD: 'bg-gray-800/50 border-gray-700',
   MEDICATION: 'bg-gray-800/50 border-gray-700',

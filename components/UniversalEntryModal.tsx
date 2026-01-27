@@ -16,17 +16,54 @@ interface UniversalEntryModalProps {
   isOpen: boolean;
   onClose: () => void;
   type: EntryType;
-  onSave: (text: string, type: EntryType, timestamp: Date, meta?: { gasLevel?: number; products?: ScannedProduct[]; images?: string[] }) => void;
+  onSave: (text: string, type: EntryType, timestamp: Date, meta?: { gasLevel?: number; bristolLevel?: number; products?: ScannedProduct[]; images?: string[] }) => void;
   selectedDate?: Date;
 }
 
 const modalConfig: Record<EntryType, { title: string; placeholder: string; emoji: string }> = {
   FOOD: { title: 'Mat', placeholder: 'Skriv vad du åt eller skanna produkt...', emoji: '🍽️' },
   SYMPTOM: { title: 'Symtom', placeholder: 'Beskriv hur du mår...', emoji: '🩺' },
+  BATHROOM: { title: 'Toabesök', placeholder: 'Beskriv avföringen (eller välj Bristol nedan)...', emoji: '🚽' },
   EXERCISE: { title: 'Träning', placeholder: 'Vad gjorde du?', emoji: '🏃' },
   MOOD: { title: 'Mående', placeholder: 'Hur känner du dig?', emoji: '😊' },
   MEDICATION: { title: 'Medicin', placeholder: 'Vilken medicin?', emoji: '💊' }
 };
+
+// Bristol Stool Scale beskrivningar
+const bristolScale = [
+  { level: 1, emoji: '🔘', label: 'Hårda klumpar', description: 'Svåra att passera', color: 'bg-red-900' },
+  { level: 2, emoji: '🥜', label: 'Klumpig korv', description: 'Sammanhängande men hård', color: 'bg-orange-900' },
+  { level: 3, emoji: '🌭', label: 'Korv med sprickor', description: 'Normal men lite hård', color: 'bg-yellow-900' },
+  { level: 4, emoji: '🐍', label: 'Slät korv', description: 'Perfekt! Optimal form', color: 'bg-green-900' },
+  { level: 5, emoji: '☁️', label: 'Mjuka klumpar', description: 'Lätt att passera', color: 'bg-yellow-800' },
+  { level: 6, emoji: '🥣', label: 'Mosig', description: 'Lös avföring', color: 'bg-orange-800' },
+  { level: 7, emoji: '💧', label: 'Vattnig', description: 'Helt flytande, diarré', color: 'bg-red-800' },
+];
+
+// Hjälpfunktion för att extrahera tid från text (t.ex. "12:30 lunch" eller "frukost 8.00")
+function extractTimeFromText(text: string): { hours: number; minutes: number } | null {
+  // Matcha HH:MM, HH.MM, H:MM, H.MM (med eller utan mellanslag)
+  const timeRegex = /\b(\d{1,2})[:.]\s?(\d{2})\b/;
+  const match = text.match(timeRegex);
+  
+  if (match) {
+    const hours = parseInt(match[1], 10);
+    const minutes = parseInt(match[2], 10);
+    
+    // Validera att det är rimliga tidvärden
+    if (hours >= 0 && hours <= 23 && minutes >= 0 && minutes <= 59) {
+      return { hours, minutes };
+    }
+  }
+  
+  return null;
+}
+
+// Hjälpfunktion för att kolla om texten innehåller "igår"
+function containsYesterday(text: string): boolean {
+  const lowerText = text.toLowerCase();
+  return lowerText.includes('igår') || lowerText.includes('i går');
+}
 
 export default function UniversalEntryModal({ isOpen, onClose, type, onSave, selectedDate }: UniversalEntryModalProps) {
   const [text, setText] = useState('');
@@ -41,6 +78,7 @@ export default function UniversalEntryModal({ isOpen, onClose, type, onSave, sel
   const [minutes, setMinutes] = useState(new Date().getMinutes());
   const [showTimePicker, setShowTimePicker] = useState(false);
   const [pendingProduct, setPendingProduct] = useState<ScannedProduct | null>(null);
+  const [bristolLevel, setBristolLevel] = useState<number | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -55,6 +93,7 @@ export default function UniversalEntryModal({ isOpen, onClose, type, onSave, sel
       setHours(now.getHours());
       setMinutes(now.getMinutes());
       setTime(formatTime(now));
+      setBristolLevel(null);
     }
   }, [isOpen]);
 
@@ -66,6 +105,7 @@ export default function UniversalEntryModal({ isOpen, onClose, type, onSave, sel
       setIsScanning(false);
       setScanError('');
       setPendingProduct(null);
+      setBristolLevel(null);
       stopCamera();
     }
   }, [isOpen]);
@@ -255,10 +295,23 @@ export default function UniversalEntryModal({ isOpen, onClose, type, onSave, sel
   };
 
   const handleSave = () => {
-    if (!text.trim() && scannedProducts.length === 0) return;
+    // För BATHROOM behövs antingen text ELLER bristol-val
+    if (type === 'BATHROOM') {
+      if (!text.trim() && bristolLevel === null) return;
+    } else {
+      if (!text.trim() && scannedProducts.length === 0) return;
+    }
 
     // Kompilera all produktdata till texten
     let finalText = text.trim();
+    
+    // För BATHROOM, lägg till Bristol-info i texten för AI-analys
+    if (type === 'BATHROOM' && bristolLevel !== null) {
+      const bristolInfo = bristolScale.find(b => b.level === bristolLevel);
+      const bristolText = `Bristol ${bristolLevel} (${bristolInfo?.label})`;
+      finalText = finalText ? `${finalText}. ${bristolText}` : bristolText;
+    }
+    
     if (scannedProducts.length > 0) {
       const productTexts = scannedProducts.map(p => 
         `${p.brand ? p.brand + ' ' : ''}${p.name}${p.ingredients ? ` (Ingredienser: ${p.ingredients})` : ''}`
@@ -268,19 +321,37 @@ export default function UniversalEntryModal({ isOpen, onClose, type, onSave, sel
         : productTexts.join(', ');
     }
 
-    const meta = {
+    const meta: { products?: ScannedProduct[]; images?: string[]; bristolLevel?: number } = {
       products: scannedProducts,
       images: capturedImages
     };
+    
+    // Lägg till bristolLevel i meta för BATHROOM
+    if (type === 'BATHROOM' && bristolLevel !== null) {
+      meta.bristolLevel = bristolLevel;
+    }
+
+    // Kolla om användaren skrev in en tid i texten
+    const parsedTime = extractTimeFromText(text);
+    const finalHours = parsedTime ? parsedTime.hours : hours;
+    const finalMinutes = parsedTime ? parsedTime.minutes : minutes;
+
+    // Kolla om texten innehåller "igår"
+    const isYesterday = containsYesterday(text);
 
     // Skapa timestamp från vald tid och datum
-    const baseDate = selectedDate || new Date();
+    let baseDate = selectedDate || new Date();
+    if (isYesterday) {
+      baseDate = new Date(baseDate);
+      baseDate.setDate(baseDate.getDate() - 1);
+    }
+    
     const timestamp = new Date(
       baseDate.getFullYear(),
       baseDate.getMonth(),
       baseDate.getDate(),
-      hours,
-      minutes
+      finalHours,
+      finalMinutes
     );
 
     onSave(finalText, type, timestamp, meta);
@@ -549,10 +620,44 @@ export default function UniversalEntryModal({ isOpen, onClose, type, onSave, sel
             autoFocus={!showCamera && !isScanning}
           />
 
+          {/* Bristol Stool Scale för BATHROOM */}
+          {type === 'BATHROOM' && (
+            <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-4">
+              <h3 className="text-sm font-medium text-gray-300 mb-3">Bristol Stool Scale</h3>
+              <div className="grid grid-cols-7 gap-1">
+                {bristolScale.map((bristol) => (
+                  <button
+                    key={bristol.level}
+                    onClick={() => setBristolLevel(bristolLevel === bristol.level ? null : bristol.level)}
+                    className={`flex flex-col items-center p-2 rounded-lg transition-all ${
+                      bristolLevel === bristol.level
+                        ? `${bristol.color} ring-2 ring-white`
+                        : 'bg-gray-800 hover:bg-gray-700'
+                    }`}
+                  >
+                    <span className="text-xl mb-1">{bristol.emoji}</span>
+                    <span className="text-xs font-bold">{bristol.level}</span>
+                  </button>
+                ))}
+              </div>
+              {bristolLevel && (
+                <div className="mt-3 p-2 bg-gray-900 rounded-lg">
+                  <p className="text-sm">
+                    <span className="font-medium">{bristolScale[bristolLevel - 1].label}</span>
+                    <span className="text-gray-400"> — {bristolScale[bristolLevel - 1].description}</span>
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Save button */}
           <button
             onClick={handleSave}
-            disabled={!text.trim() && scannedProducts.length === 0}
+            disabled={type === 'BATHROOM' 
+              ? (!text.trim() && bristolLevel === null)
+              : (!text.trim() && scannedProducts.length === 0)
+            }
             className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-800 disabled:text-gray-600 text-white font-medium py-3 rounded-lg transition-colors"
           >
             Spara

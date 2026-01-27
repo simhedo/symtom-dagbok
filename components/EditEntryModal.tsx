@@ -13,9 +13,10 @@ interface EditEntryModalProps {
   onDelete: (id: string) => void;
 }
 
-const modalTitles = {
+const modalTitles: Record<EntryType, string> = {
   FOOD: 'Redigera Mat',
   SYMPTOM: 'Redigera Symtom',
+  BATHROOM: 'Redigera Toabesök',
   EXERCISE: 'Redigera Aktivitet',
   MOOD: 'Redigera Mående',
   MEDICATION: 'Redigera Medicin',
