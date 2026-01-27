@@ -1,7 +1,10 @@
 'use client';
 
 import { useState } from 'react';
-import { X, Plus, Trash2, Target, ShieldX, Scale, CheckCircle } from 'lucide-react';
+import { 
+  X, Plus, Trash2, Target, ShieldX, CheckCircle, 
+  Clock, Dumbbell, Heart
+} from 'lucide-react';
 import { PlanRule } from '@/types';
 
 interface SmartPlanModalProps {
@@ -10,111 +13,115 @@ interface SmartPlanModalProps {
   onCreated?: (planId: number) => void;
 }
 
-const COMMON_AVOID_CATEGORIES = [
-  'Godis',
-  'Kakor',
-  'Chips',
-  'Snacks',
-  'Lask/Soda',
-  'Alkohol',
-  'Fast food',
-  'Friterad mat',
-  'Processad mat',
+type RuleCategory = 'avoid' | 'timing' | 'activity' | 'wellness';
+
+const RULE_CATEGORIES = [
+  { id: 'avoid' as RuleCategory, label: 'Undvik', icon: ShieldX, color: '#dc2626' },
+  { id: 'timing' as RuleCategory, label: 'Maltider', icon: Clock, color: '#2563eb' },
+  { id: 'activity' as RuleCategory, label: 'Aktivitet', icon: Dumbbell, color: '#16a34a' },
+  { id: 'wellness' as RuleCategory, label: 'Valbefinnande', icon: Heart, color: '#9333ea' },
 ];
 
-const COMMON_TRIGGERS = [
-  'Gluten',
-  'Laktos',
-  'FODMAP-fruktan',
-  'FODMAP-GOS',
-  'Koffein',
-  'Alkohol',
-  'Fet mat',
-  'Stark mat',
-  'Lok',
-  'Vitlok',
-];
-
-type RuleType = 'avoid_category' | 'avoid_trigger' | 'max_fat' | 'custom';
+const PRESET_RULES: Record<RuleCategory, { label: string; rule: Partial<PlanRule> }[]> = {
+  avoid: [
+    { label: 'Godis', rule: { type: 'avoid_category', target: 'godis' } },
+    { label: 'Kakor', rule: { type: 'avoid_category', target: 'kakor' } },
+    { label: 'Chips/Snacks', rule: { type: 'avoid_category', target: 'chips' } },
+    { label: 'Lask/Soda', rule: { type: 'avoid_category', target: 'lask' } },
+    { label: 'Alkohol', rule: { type: 'avoid_category', target: 'alkohol' } },
+    { label: 'Fast food', rule: { type: 'avoid_category', target: 'fast food' } },
+    { label: 'Gluten', rule: { type: 'avoid_trigger', target: 'gluten' } },
+    { label: 'Laktos', rule: { type: 'avoid_trigger', target: 'laktos' } },
+    { label: 'Lok/Vitlok', rule: { type: 'avoid_trigger', target: 'lok' } },
+    { label: 'FODMAP', rule: { type: 'avoid_trigger', target: 'fodmap' } },
+    { label: 'Max 15g fett/maltid', rule: { type: 'max_amount', target: 'fett', value: 15, unit: 'g' } },
+    { label: 'Max 20g fett/maltid', rule: { type: 'max_amount', target: 'fett', value: 20, unit: 'g' } },
+  ],
+  timing: [
+    { label: '3h mellan maltider', rule: { type: 'meal_spacing', target: 'maltid', value: 3, unit: 'h' } },
+    { label: '4h mellan maltider', rule: { type: 'meal_spacing', target: 'maltid', value: 4, unit: 'h' } },
+    { label: 'Inte ata efter 20:00', rule: { type: 'no_late_eating', target: 'mat', timeValue: '20:00' } },
+    { label: 'Inte ata efter 21:00', rule: { type: 'no_late_eating', target: 'mat', timeValue: '21:00' } },
+    { label: 'Fasteperiod 16:8', rule: { type: 'eating_window', target: 'mat', timeValue: '12:00-20:00' } },
+    { label: 'Regelbundna maltider', rule: { type: 'manual_habit', target: 'regelbundna-maltider' } },
+  ],
+  activity: [
+    { label: 'Promenad 30 min/dag', rule: { type: 'daily_movement', target: 'promenad', value: 30, unit: 'min' } },
+    { label: 'Rorelse 20 min/dag', rule: { type: 'daily_movement', target: 'rorelse', value: 20, unit: 'min' } },
+    { label: 'Promenad efter maltid', rule: { type: 'manual_habit', target: 'promenad-maltid' } },
+    { label: 'Yoga/stretching', rule: { type: 'manual_habit', target: 'yoga' } },
+    { label: 'Styrketraning', rule: { type: 'manual_habit', target: 'styrka' } },
+  ],
+  wellness: [
+    { label: 'Tugga ordentligt (30ggr)', rule: { type: 'manual_habit', target: 'tugga' } },
+    { label: 'At i lugn och ro', rule: { type: 'manual_habit', target: 'lugn-maltid' } },
+    { label: 'Mindfulness/meditation', rule: { type: 'manual_habit', target: 'mindfulness' } },
+    { label: 'Djupandning fore mat', rule: { type: 'manual_habit', target: 'andning' } },
+    { label: 'Somn 7-8 timmar', rule: { type: 'manual_habit', target: 'somn' } },
+    { label: 'Drick 2L vatten', rule: { type: 'manual_habit', target: 'vatten' } },
+    { label: 'Stresshantering', rule: { type: 'manual_habit', target: 'stress' } },
+    { label: 'Ingen skarm 1h fore somn', rule: { type: 'manual_habit', target: 'skarm' } },
+    { label: 'Ta probiotika', rule: { type: 'manual_habit', target: 'probiotika' } },
+    { label: 'Magmassage', rule: { type: 'manual_habit', target: 'magmassage' } },
+    { label: 'Dagbok/reflektion', rule: { type: 'manual_habit', target: 'dagbok' } },
+    { label: 'Tacksamhetsokning', rule: { type: 'manual_habit', target: 'tacksamhet' } },
+  ],
+};
 
 export default function SmartPlanModal({ isOpen, onClose, onCreated }: SmartPlanModalProps) {
   const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
   const [startDate, setStartDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [endDate, setEndDate] = useState('');
   const [rules, setRules] = useState<PlanRule[]>([]);
   const [loading, setLoading] = useState(false);
-  
-  // Rule builder state
-  const [showRuleBuilder, setShowRuleBuilder] = useState(false);
-  const [ruleType, setRuleType] = useState<RuleType>('avoid_category');
-  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
-  const [selectedTriggers, setSelectedTriggers] = useState<string[]>([]);
-  const [maxFat, setMaxFat] = useState(20);
-  const [customRule, setCustomRule] = useState('');
+  const [activeCategory, setActiveCategory] = useState<RuleCategory>('avoid');
+  const [customRuleText, setCustomRuleText] = useState('');
 
   if (!isOpen) return null;
 
-  const addRule = () => {
-    const newRules: PlanRule[] = [];
-    
-    if (ruleType === 'avoid_category' && selectedCategories.length > 0) {
-      selectedCategories.forEach(cat => {
-        newRules.push({
-          id: `cat_${Date.now()}_${cat}`,
-          type: 'avoid_category',
-          target: cat.toLowerCase(),
-          description: `Undvik ${cat.toLowerCase()}`
-        });
-      });
-    } else if (ruleType === 'avoid_trigger' && selectedTriggers.length > 0) {
-      selectedTriggers.forEach(trigger => {
-        newRules.push({
-          id: `trig_${Date.now()}_${trigger}`,
-          type: 'avoid_trigger',
-          target: trigger.toLowerCase(),
-          description: `Undvik ${trigger.toLowerCase()}`
-        });
-      });
-    } else if (ruleType === 'max_fat') {
-      newRules.push({
-        id: `fat_${Date.now()}`,
-        type: 'max_amount',
-        target: 'fett',
-        value: maxFat,
-        unit: 'g',
-        description: `Max ${maxFat}g fett per maltid`
-      });
-    } else if (ruleType === 'custom' && customRule.trim()) {
-      newRules.push({
-        id: `custom_${Date.now()}`,
-        type: 'avoid_category',
-        target: customRule.toLowerCase(),
-        description: `Undvik ${customRule.toLowerCase()}`
-      });
-    }
-    
-    setRules(prev => [...prev, ...newRules]);
-    setSelectedCategories([]);
-    setSelectedTriggers([]);
-    setCustomRule('');
-    setShowRuleBuilder(false);
+  const addPresetRule = (preset: { label: string; rule: Partial<PlanRule> }) => {
+    const exists = rules.some(r => 
+      r.type === preset.rule.type && r.target === preset.rule.target
+    );
+    if (exists) return;
+
+    const newRule: PlanRule = {
+      id: `${preset.rule.type}_${Date.now()}_${Math.random().toString(36).slice(2)}`,
+      type: preset.rule.type as PlanRule['type'],
+      target: preset.rule.target || '',
+      value: preset.rule.value,
+      unit: preset.rule.unit,
+      timeValue: preset.rule.timeValue,
+      description: preset.label,
+      category: activeCategory,
+    };
+    setRules(prev => [...prev, newRule]);
+  };
+
+  const addCustomRule = () => {
+    if (!customRuleText.trim()) return;
+    const newRule: PlanRule = {
+      id: `custom_${Date.now()}`,
+      type: 'manual_habit',
+      target: customRuleText.toLowerCase().replace(/\s+/g, '-'),
+      description: customRuleText.trim(),
+      category: 'wellness',
+    };
+    setRules(prev => [...prev, newRule]);
+    setCustomRuleText('');
   };
 
   const removeRule = (id: string) => {
     setRules(prev => prev.filter(r => r.id !== id));
   };
 
-  const toggleCategory = (cat: string) => {
-    setSelectedCategories(prev => 
-      prev.includes(cat) ? prev.filter(c => c !== cat) : [...prev, cat]
-    );
+  const isRuleSelected = (preset: { label: string; rule: Partial<PlanRule> }) => {
+    return rules.some(r => r.type === preset.rule.type && r.target === preset.rule.target);
   };
 
-  const toggleTrigger = (trigger: string) => {
-    setSelectedTriggers(prev => 
-      prev.includes(trigger) ? prev.filter(t => t !== trigger) : [...prev, trigger]
-    );
+  const getCategoryColor = (cat?: string) => {
+    const category = RULE_CATEGORIES.find(c => c.id === cat);
+    return category?.color || '#6b7280';
   };
 
   const createPlan = async () => {
@@ -124,7 +131,6 @@ export default function SmartPlanModal({ isOpen, onClose, onCreated }: SmartPlan
     try {
       const token = localStorage.getItem('gut_tracker_token') || '';
       
-      // Skapa plan med regler (habits sparas som JSON i notes)
       const res = await fetch('/api/plans', {
         method: 'POST',
         headers: { 
@@ -133,7 +139,7 @@ export default function SmartPlanModal({ isOpen, onClose, onCreated }: SmartPlan
         },
         body: JSON.stringify({
           title,
-          description: JSON.stringify({ rules, description }), // Spara regler i description som JSON
+          description: JSON.stringify({ rules }),
           startDate,
           endDate: endDate || null,
           habits: rules.map(r => ({ name: r.description, notes: JSON.stringify(r) }))
@@ -143,7 +149,6 @@ export default function SmartPlanModal({ isOpen, onClose, onCreated }: SmartPlan
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Kunde inte skapa plan');
       
-      // Spara reglerna lokalt for snabb adherence-check
       const existingPlans = JSON.parse(localStorage.getItem('smart_plans') || '[]');
       existingPlans.push({
         id: data.planId,
@@ -151,7 +156,7 @@ export default function SmartPlanModal({ isOpen, onClose, onCreated }: SmartPlan
         rules,
         startDate,
         endDate: endDate || null,
-        adherence: {} // { "2026-01-27": { passed: true, violations: [] } }
+        adherence: {}
       });
       localStorage.setItem('smart_plans', JSON.stringify(existingPlans));
       
@@ -172,7 +177,7 @@ export default function SmartPlanModal({ isOpen, onClose, onCreated }: SmartPlan
         <div className="flex items-center justify-between p-4 border-b border-gray-800">
           <div className="flex items-center gap-2">
             <Target className="w-5 h-5 text-purple-400" />
-            <h2 className="font-medium text-gray-100">Smart Plan</h2>
+            <h2 className="font-medium text-gray-100">Ny Smart Plan</h2>
           </div>
           <button onClick={onClose} className="p-1 text-gray-400 hover:text-white">
             <X className="w-5 h-5" />
@@ -187,7 +192,7 @@ export default function SmartPlanModal({ isOpen, onClose, onCreated }: SmartPlan
             <input
               value={title}
               onChange={e => setTitle(e.target.value)}
-              placeholder="T.ex. Undvik snacks i januari"
+              placeholder="T.ex. Battre matvanor januari"
               className="w-full bg-gray-800 border border-gray-700 rounded-lg p-3 text-gray-100"
             />
           </div>
@@ -213,34 +218,96 @@ export default function SmartPlanModal({ isOpen, onClose, onCreated }: SmartPlan
               />
             </div>
           </div>
-          
-          {/* Rules */}
+
+          {/* Category tabs */}
+          <div className="flex gap-1 bg-gray-800 p-1 rounded-lg">
+            {RULE_CATEGORIES.map(cat => {
+              const Icon = cat.icon;
+              const isActive = activeCategory === cat.id;
+              return (
+                <button
+                  key={cat.id}
+                  onClick={() => setActiveCategory(cat.id)}
+                  className={`flex-1 flex items-center justify-center gap-1.5 py-2 px-2 rounded text-xs font-medium transition-colors ${
+                    isActive ? 'text-white' : 'text-gray-400 hover:text-gray-200'
+                  }`}
+                  style={isActive ? { backgroundColor: cat.color } : {}}
+                >
+                  <Icon className="w-4 h-4" />
+                  <span className="hidden sm:inline">{cat.label}</span>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Preset rules */}
           <div>
-            <div className="flex items-center justify-between mb-2">
-              <label className="text-sm text-gray-300">Regler</label>
+            <label className="text-xs text-gray-500 mb-2 block">
+              {RULE_CATEGORIES.find(c => c.id === activeCategory)?.label} - valj regler
+            </label>
+            <div className="flex flex-wrap gap-2">
+              {PRESET_RULES[activeCategory].map((preset, i) => {
+                const selected = isRuleSelected(preset);
+                return (
+                  <button
+                    key={i}
+                    onClick={() => !selected && addPresetRule(preset)}
+                    className={`px-3 py-1.5 rounded-full text-sm transition-all ${
+                      selected
+                        ? 'bg-gray-700 text-gray-400'
+                        : 'bg-gray-800 text-gray-300 hover:bg-gray-700 border border-gray-700 hover:border-gray-600'
+                    }`}
+                  >
+                    {selected && <span className="mr-1 text-green-400">+</span>}
+                    {preset.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Custom rule */}
+          <div>
+            <label className="text-xs text-gray-500 mb-1 block">Egen regel/vana</label>
+            <div className="flex gap-2">
+              <input
+                value={customRuleText}
+                onChange={e => setCustomRuleText(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && addCustomRule()}
+                placeholder="T.ex. Skriv dagbok varje kvall..."
+                className="flex-1 bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-100"
+              />
               <button
-                onClick={() => setShowRuleBuilder(true)}
-                className="flex items-center gap-1 text-sm text-purple-400 hover:text-purple-300"
+                onClick={addCustomRule}
+                disabled={!customRuleText.trim()}
+                className="px-3 py-2 bg-gray-700 hover:bg-gray-600 disabled:bg-gray-800 disabled:text-gray-600 rounded-lg"
               >
                 <Plus className="w-4 h-4" />
-                Lagg till regel
               </button>
             </div>
-            
-            {rules.length === 0 ? (
-              <div className="bg-gray-800/50 border border-dashed border-gray-700 rounded-lg p-4 text-center text-gray-500 text-sm">
-                Inga regler annu. Lagg till regler som AI:n ska kolla mot.
-              </div>
-            ) : (
-              <div className="space-y-2">
+          </div>
+
+          {/* Selected rules */}
+          {rules.length > 0 && (
+            <div>
+              <label className="text-xs text-gray-500 mb-2 block">
+                Valda regler ({rules.length})
+              </label>
+              <div className="space-y-1.5 max-h-48 overflow-y-auto">
                 {rules.map(rule => (
                   <div
                     key={rule.id}
-                    className="flex items-center justify-between bg-gray-800 border border-gray-700 rounded-lg p-3"
+                    className="flex items-center justify-between bg-gray-800 border border-gray-700 rounded-lg px-3 py-2"
                   >
                     <div className="flex items-center gap-2">
-                      <ShieldX className="w-4 h-4 text-red-400" />
+                      <div 
+                        className="w-2 h-2 rounded-full"
+                        style={{ backgroundColor: getCategoryColor(rule.category) }}
+                      />
                       <span className="text-sm text-gray-200">{rule.description}</span>
+                      {rule.type === 'manual_habit' && (
+                        <span className="text-[10px] bg-gray-700 text-gray-400 px-1.5 py-0.5 rounded">check</span>
+                      )}
                     </div>
                     <button
                       onClick={() => removeRule(rule.id)}
@@ -251,137 +318,6 @@ export default function SmartPlanModal({ isOpen, onClose, onCreated }: SmartPlan
                   </div>
                 ))}
               </div>
-            )}
-          </div>
-          
-          {/* Rule Builder Modal */}
-          {showRuleBuilder && (
-            <div className="bg-gray-800 border border-gray-700 rounded-lg p-4 space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="text-sm font-medium text-gray-200">Lagg till regel</h3>
-                <button onClick={() => setShowRuleBuilder(false)} className="text-gray-400 hover:text-white">
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-              
-              {/* Rule type selector */}
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  onClick={() => setRuleType('avoid_category')}
-                  className={`p-2 rounded-lg text-sm text-left ${
-                    ruleType === 'avoid_category' 
-                      ? 'bg-purple-600 text-white' 
-                      : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-                  }`}
-                >
-                  <ShieldX className="w-4 h-4 mb-1" />
-                  Undvik kategori
-                </button>
-                <button
-                  onClick={() => setRuleType('avoid_trigger')}
-                  className={`p-2 rounded-lg text-sm text-left ${
-                    ruleType === 'avoid_trigger' 
-                      ? 'bg-purple-600 text-white' 
-                      : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-                  }`}
-                >
-                  <ShieldX className="w-4 h-4 mb-1" />
-                  Undvik trigger
-                </button>
-                <button
-                  onClick={() => setRuleType('max_fat')}
-                  className={`p-2 rounded-lg text-sm text-left ${
-                    ruleType === 'max_fat' 
-                      ? 'bg-purple-600 text-white' 
-                      : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-                  }`}
-                >
-                  <Scale className="w-4 h-4 mb-1" />
-                  Max fett
-                </button>
-                <button
-                  onClick={() => setRuleType('custom')}
-                  className={`p-2 rounded-lg text-sm text-left ${
-                    ruleType === 'custom' 
-                      ? 'bg-purple-600 text-white' 
-                      : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-                  }`}
-                >
-                  <Plus className="w-4 h-4 mb-1" />
-                  Egen regel
-                </button>
-              </div>
-              
-              {/* Rule options */}
-              {ruleType === 'avoid_category' && (
-                <div className="flex flex-wrap gap-2">
-                  {COMMON_AVOID_CATEGORIES.map(cat => (
-                    <button
-                      key={cat}
-                      onClick={() => toggleCategory(cat)}
-                      className={`px-3 py-1.5 rounded-full text-sm ${
-                        selectedCategories.includes(cat)
-                          ? 'bg-red-600 text-white'
-                          : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-                      }`}
-                    >
-                      {cat}
-                    </button>
-                  ))}
-                </div>
-              )}
-              
-              {ruleType === 'avoid_trigger' && (
-                <div className="flex flex-wrap gap-2">
-                  {COMMON_TRIGGERS.map(trigger => (
-                    <button
-                      key={trigger}
-                      onClick={() => toggleTrigger(trigger)}
-                      className={`px-3 py-1.5 rounded-full text-sm ${
-                        selectedTriggers.includes(trigger)
-                          ? 'bg-yellow-600 text-white'
-                          : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-                      }`}
-                    >
-                      {trigger}
-                    </button>
-                  ))}
-                </div>
-              )}
-              
-              {ruleType === 'max_fat' && (
-                <div className="flex items-center gap-3">
-                  <span className="text-sm text-gray-400">Max</span>
-                  <input
-                    type="number"
-                    value={maxFat}
-                    onChange={e => setMaxFat(Number(e.target.value))}
-                    className="w-20 bg-gray-700 border border-gray-600 rounded-lg p-2 text-center text-gray-100"
-                  />
-                  <span className="text-sm text-gray-400">gram fett per maltid</span>
-                </div>
-              )}
-              
-              {ruleType === 'custom' && (
-                <input
-                  value={customRule}
-                  onChange={e => setCustomRule(e.target.value)}
-                  placeholder="Skriv vad du vill undvika..."
-                  className="w-full bg-gray-700 border border-gray-600 rounded-lg p-2 text-gray-100"
-                />
-              )}
-              
-              <button
-                onClick={addRule}
-                disabled={
-                  (ruleType === 'avoid_category' && selectedCategories.length === 0) ||
-                  (ruleType === 'avoid_trigger' && selectedTriggers.length === 0) ||
-                  (ruleType === 'custom' && !customRule.trim())
-                }
-                className="w-full bg-purple-600 hover:bg-purple-500 disabled:bg-gray-700 disabled:text-gray-500 text-white font-medium py-2 rounded-lg"
-              >
-                Lagg till
-              </button>
             </div>
           )}
         </div>
@@ -394,7 +330,7 @@ export default function SmartPlanModal({ isOpen, onClose, onCreated }: SmartPlan
             className="w-full bg-purple-600 hover:bg-purple-500 disabled:bg-gray-700 disabled:text-gray-500 text-white font-medium py-3 rounded-lg flex items-center justify-center gap-2"
           >
             <CheckCircle className="w-5 h-5" />
-            {loading ? 'Skapar...' : 'Skapa plan'}
+            {loading ? 'Skapar...' : `Skapa plan (${rules.length} regler)`}
           </button>
         </div>
       </div>
